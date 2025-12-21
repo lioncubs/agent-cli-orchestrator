@@ -245,10 +245,12 @@ Execute a synchronous Copilot CLI prompt.
 ```json
 {
   "status": "success",
-  "output": {
-    // Copilot CLI JSON output
-  },
-  "prompt": "How do I create a Python function to reverse a string?"
+  "output": "The response from Copilot CLI",
+  "prompt": "How do I create a Python function to reverse a string?",
+  "full_stdout": "Complete stdout from copilot CLI execution",
+  "full_stderr": "",
+  "command": "copilot -p How do I create a Python function to reverse a string? --silent --allow-all-tools",
+  "log_file": "logs/copilot/copilot_2025-12-21T19-22-30.737080.json"
 }
 ```
 
@@ -284,6 +286,93 @@ Execute an asynchronous Copilot CLI prompt.
 This endpoint is useful for long-running prompts that may take significant time to process.
 
 **Supported options:** `branch`, `worktree`, `session_id` (same as `/prompt` endpoint)
+
+---
+
+### Activity Logs
+
+#### GET `/logs`
+
+Get recent activity logs from the orchestrator.
+
+**Query Parameters:**
+- `limit` (integer, optional): Maximum number of log entries to return
+
+**Response:**
+```json
+{
+  "logs": [
+    {
+      "timestamp": "2025-12-21T19:22:30.737080",
+      "action": "prompt_sync",
+      "status": "success",
+      "payload": {
+        "prompt": "list files in current directory",
+        "options": null
+      },
+      "result": {
+        "status": "success"
+      }
+    }
+  ],
+  "count": 1
+}
+```
+
+**Status Codes:**
+- `200 OK`: Logs retrieved successfully
+- `500 Internal Server Error`: Error retrieving logs
+
+---
+
+#### GET `/logs/copilot`
+
+Get detailed Copilot CLI execution logs with full input/output.
+
+This endpoint provides access to the complete execution logs stored in JSON files,
+including the full prompt, command executed, stdout, stderr, and exit code.
+
+**Query Parameters:**
+- `limit` (integer, optional): Maximum number of log files to return (default: 20)
+
+**Response:**
+```json
+{
+  "logs": [
+    {
+      "file": "copilot_2025-12-21T19-22-30.737080.json",
+      "data": {
+        "timestamp": "2025-12-21T19:22:30.737080",
+        "type": "copilot_execute",
+        "prompt": "list files in current directory",
+        "options": null,
+        "command": [
+          "copilot",
+          "-p",
+          "list files in current directory",
+          "--silent",
+          "--allow-all-tools"
+        ],
+        "exit_code": 0,
+        "stdout": "Complete output from Copilot CLI...",
+        "stderr": ""
+      }
+    }
+  ],
+  "count": 1,
+  "total_files": 4
+}
+```
+
+**Status Codes:**
+- `200 OK`: Logs retrieved successfully
+- `500 Internal Server Error`: Error retrieving logs
+
+**Notes:**
+- Logs are stored in the directory specified by `copilot_log_dir` config (default: `logs/copilot/`)
+- Each log file contains the complete execution details for one Copilot CLI invocation
+- Logs are sorted by modification time (newest first)
+- The `total_files` field indicates how many log files exist in total
 
 ---
 

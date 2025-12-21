@@ -48,8 +48,18 @@ class GitOperations:
             worktrees = []
             current_worktree = {}
             
+            if not output or output.strip() == '':
+                # No worktrees or empty output, return empty list
+                return worktrees
+            
             for line in output.split('\n'):
-                if line.startswith('worktree '):
+                line = line.strip()
+                if not line:
+                    # Empty line separates worktrees
+                    if current_worktree:
+                        worktrees.append(current_worktree)
+                        current_worktree = {}
+                elif line.startswith('worktree '):
                     if current_worktree:
                         worktrees.append(current_worktree)
                     current_worktree = {'path': line.split(' ', 1)[1]}
@@ -62,6 +72,7 @@ class GitOperations:
                 elif line.startswith('detached'):
                     current_worktree['detached'] = True
             
+            # Don't forget the last worktree
             if current_worktree:
                 worktrees.append(current_worktree)
             

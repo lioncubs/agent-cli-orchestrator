@@ -80,97 +80,22 @@ class TestCopilotCLI:
         assert result["status"] == "error"
         assert "not installed" in result["message"].lower()
     
-    @patch('copilot_cli.subprocess.run')
     @patch('copilot_cli.CopilotCLI._validate_cli_available')
-    def test_list_sessions_success_json(self, mock_validate, mock_run):
-        """Test list sessions with JSON output."""
+    def test_list_sessions_returns_empty_when_supported(self, mock_validate):
+        """List sessions should succeed but return empty when unsupported by CLI."""
         mock_validate.return_value = True
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout='[{"session_id": "session1", "status": "active"}, {"session_id": "session2", "status": "active"}]',
-            stderr=""
-        )
-        
+
         cli = CopilotCLI()
         result = cli.list_sessions()
-        
-        assert result["status"] == "success"
-        assert result["count"] == 2
-        assert len(result["sessions"]) == 2
-        assert result["sessions"][0]["session_id"] == "session1"
-    
-    @patch('copilot_cli.subprocess.run')
-    @patch('copilot_cli.CopilotCLI._validate_cli_available')
-    def test_list_sessions_success_text(self, mock_validate, mock_run):
-        """Test list sessions with plain text output."""
-        mock_validate.return_value = True
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout='session-abc123\nsession-def456\n',
-            stderr=""
-        )
-        
-        cli = CopilotCLI()
-        result = cli.list_sessions()
-        
-        assert result["status"] == "success"
-        assert result["count"] == 2
-        assert len(result["sessions"]) == 2
-        assert result["sessions"][0]["session_id"] == "session-abc123"
-        assert result["sessions"][1]["session_id"] == "session-def456"
-    
-    @patch('copilot_cli.subprocess.run')
-    @patch('copilot_cli.CopilotCLI._validate_cli_available')
-    def test_list_sessions_empty(self, mock_validate, mock_run):
-        """Test list sessions with no active sessions."""
-        mock_validate.return_value = True
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout='[]',
-            stderr=""
-        )
-        
-        cli = CopilotCLI()
-        result = cli.list_sessions()
-        
+
         assert result["status"] == "success"
         assert result["count"] == 0
         assert result["sessions"] == []
-    
-    @patch('copilot_cli.subprocess.run')
-    @patch('copilot_cli.CopilotCLI._validate_cli_available')
-    def test_list_sessions_failure(self, mock_validate, mock_run):
-        """Test list sessions command failure."""
-        mock_validate.return_value = True
-        mock_run.return_value = Mock(
-            returncode=1,
-            stdout='',
-            stderr='Error: Unable to list sessions'
-        )
-        
-        cli = CopilotCLI()
-        result = cli.list_sessions()
-        
-        assert result["status"] == "error"
-        assert result["exit_code"] == 1
-        assert "Unable to list sessions" in result["message"]
-    
-    @patch('copilot_cli.subprocess.run')
-    @patch('copilot_cli.CopilotCLI._validate_cli_available')
-    def test_list_sessions_timeout(self, mock_validate, mock_run):
-        """Test list sessions with timeout."""
-        mock_validate.return_value = True
-        mock_run.side_effect = subprocess.TimeoutExpired('copilot', 30)
-        
-        cli = CopilotCLI()
-        result = cli.list_sessions()
-        
-        assert result["status"] == "error"
-        assert "timed out" in result["message"].lower()
-    
+        assert "not supported" in result["message"].lower()
+
     @patch('copilot_cli.CopilotCLI._validate_cli_available')
     def test_list_sessions_cli_disabled(self, mock_validate):
-        """Test list sessions when CLI is disabled."""
+        """List sessions should report when CLI is disabled."""
         with patch('copilot_cli.config') as mock_config:
             mock_config.copilot_enabled = False
             
@@ -179,10 +104,10 @@ class TestCopilotCLI:
             
             assert result["status"] == "error"
             assert "disabled" in result["message"].lower()
-    
+
     @patch('copilot_cli.CopilotCLI._validate_cli_available')
     def test_list_sessions_cli_not_available(self, mock_validate):
-        """Test list sessions when CLI is not installed."""
+        """List sessions should error when CLI missing."""
         mock_validate.return_value = False
         
         cli = CopilotCLI()
@@ -227,7 +152,7 @@ class TestCopilotCLI:
         
         assert result["status"] == "success"
         assert result["output"] == "Plain text response"
-        assert result.get("raw") is True
+        assert result["full_stdout"] == "Plain text response"
     
     @patch('copilot_cli.subprocess.run')
     @patch('copilot_cli.CopilotCLI._validate_cli_available')
@@ -262,7 +187,7 @@ class TestCopilotCLI:
     @patch('copilot_cli.subprocess.run')
     @patch('copilot_cli.CopilotCLI._validate_cli_available')
     def test_execute_prompt_with_options(self, mock_validate, mock_run):
-        """Test execute prompt with branch, worktree, and session_id options."""
+        """Test execute prompt with model and resume options."""
         mock_validate.return_value = True
         mock_run.return_value = Mock(
             returncode=0,
@@ -273,16 +198,16 @@ class TestCopilotCLI:
         cli = CopilotCLI()
         result = cli.execute_prompt(
             "test prompt",
-            options={"branch": "main", "worktree": "./worktrees/test", "session_id": "abc123"}
+            options={"session_id": "abc123"}
         )
         
         assert result["status"] == "success"
         # Verify options were passed to command
         call_args = mock_run.call_args[0][0]
-        assert '--branch' in call_args
-        assert '--worktree' in call_args
-        assert '--session' in call_args
-        assert 'abc123' in call_args
+        assert '-p' in call_args
+        assert 'test prompt' in call_args
+        assert '--resume' in call_args
+        assert '--allow-all-tools' in call_args  # Default for non-interactive
     
     @patch('copilot_cli.asyncio.create_subprocess_exec')
     @patch('copilot_cli.CopilotCLI._validate_cli_available')

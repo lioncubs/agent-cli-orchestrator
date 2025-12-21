@@ -5,10 +5,8 @@ repositories:
   - name: "agent-cli-orchestrator"
     path: "."
     default: true
-    worktrees_path: "../agent-cli-orchestrator.worktrees"
   - name: "lioncubs"
     path: "/workspaces/lioncubs"
-    worktrees_path: "/workspaces/lioncubs.worktrees"
   
 # Server configuration
 server:
@@ -20,3 +18,7 @@ copilot:
   enabled: true
   timeout: 300  # seconds
   log_dir: "./logs/copilot"  # CLI log directory (files created by Copilot CLI)
+  
+# Worktree configuration
+worktrees:
+  base_path: "../agent-cli-orchestrator.worktrees"

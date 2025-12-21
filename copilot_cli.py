@@ -3,7 +3,8 @@
 import subprocess
 import json
 import asyncio
-from typing import Dict, Any, Optional
+from pathlib import Path
+from typing import Dict, Any, Optional, List
 from config_loader import config
 
 
@@ -13,6 +14,8 @@ class CopilotCLI:
     def __init__(self):
         self.timeout = config.copilot_timeout
         self.enabled = config.copilot_enabled
+        self.log_dir = Path(config.copilot_log_dir)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
     
     def _validate_cli_available(self) -> bool:
         """Check if Copilot CLI is available."""
@@ -27,18 +30,40 @@ class CopilotCLI:
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
     
-    def execute_prompt(self, prompt: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Execute a synchronous prompt via Copilot CLI.
-        
+    def _build_command(self, prompt: str, options: Optional[Dict[str, Any]]) -> List[str]:
+        """Build the copilot CLI command for a prompt.
+
         Args:
-            prompt: The prompt text to send to Copilot
-            options: Optional parameters including:
-                - branch: Git branch to use
-                - worktree: Worktree path for background agent
-                - session_id: Existing session ID to continue
-        
+            prompt: Prompt text.
+            options: Optional CLI overrides.
+
         Returns:
-            Dict with status and response from Copilot CLI
+            Command list suitable for subprocess execution.
+        """
+        # Check if this is an interactive mode request
+        if options and options.get('interactive_mode'):
+            # For interactive mode, use -i flag
+            command = ['copilot', '-i', prompt]
+        else:
+            # For non-interactive mode, use -p flag with --silent and --allow-all-tools
+            command = ['copilot', '-p', prompt, '--silent', '--allow-all-tools']
+
+        if options:
+            if options.get('session_id'):
+                command.extend(['--resume', options['session_id']])
+
+        return command
+
+    def execute_prompt(self, prompt: str, options: Optional[Dict[str, Any]] = None, cwd: Optional[str] = None) -> Dict[str, Any]:
+        """Execute a synchronous prompt via Copilot CLI.
+
+        Args:
+            prompt: The prompt text to send to Copilot.
+            options: Optional CLI overrides such as model, session_id, and allow_all_tools.
+            cwd: Optional working directory for the command execution.
+
+        Returns:
+            Dict with status, stdout, stderr, and exit code.
         """
         if not self.enabled:
             return {
@@ -53,49 +78,64 @@ class CopilotCLI:
             }
         
         try:
-            # Build command
-            command = ['copilot', 'prompt', '-i', prompt, '-o', 'json']
+            command = self._build_command(prompt, options)
             
-            # Add optional parameters if provided
-            if options:
-                if 'branch' in options:
-                    command.extend(['--branch', options['branch']])
-                if 'worktree' in options:
-                    command.extend(['--worktree', options['worktree']])
-                if 'session_id' in options:
-                    command.extend(['--session', options['session_id']])
+            # Log the full input
+            import datetime
+            timestamp = datetime.datetime.now().isoformat()
+            log_entry = {
+                "timestamp": timestamp,
+                "type": "copilot_execute",
+                "prompt": prompt,
+                "options": options,
+                "command": command,
+                "cwd": cwd
+            }
             
             # Execute command
             result = subprocess.run(
                 command,
                 capture_output=True,
                 text=True,
-                timeout=self.timeout
+                timeout=self.timeout,
+                cwd=cwd
             )
             
+            # Log the full output
+            log_entry["exit_code"] = result.returncode
+            log_entry["stdout"] = result.stdout
+            log_entry["stderr"] = result.stderr
+            
+            # Write detailed log to file
+            log_file = self.log_dir / f"copilot_{timestamp.replace(':', '-')}.json"
+            try:
+                import json as json_module
+                with open(log_file, 'w') as f:
+                    json_module.dump(log_entry, f, indent=2)
+            except Exception as log_error:
+                print(f"Warning: Could not write log file: {log_error}")
+            
+            parsed = self._parse_output(result.stdout)
             if result.returncode == 0:
-                try:
-                    # Parse JSON output
-                    output = json.loads(result.stdout)
-                    return {
-                        "status": "success",
-                        "output": output,
-                        "prompt": prompt
-                    }
-                except json.JSONDecodeError:
-                    # If not valid JSON, return raw output
-                    return {
-                        "status": "success",
-                        "output": result.stdout,
-                        "prompt": prompt,
-                        "raw": True
-                    }
-            else:
                 return {
-                    "status": "error",
-                    "message": result.stderr or "Command failed",
-                    "exit_code": result.returncode
+                    "status": "success",
+                    "output": parsed,
+                    "prompt": prompt,
+                    "full_stdout": result.stdout,
+                    "full_stderr": result.stderr,
+                    "command": ' '.join(command),
+                    "log_file": str(log_file)
                 }
+
+            return {
+                "status": "error",
+                "message": result.stderr or "Command failed",
+                "exit_code": result.returncode,
+                "full_stdout": result.stdout,
+                "full_stderr": result.stderr,
+                "command": ' '.join(command),
+                "log_file": str(log_file)
+            }
         
         except subprocess.TimeoutExpired:
             return {
@@ -108,7 +148,7 @@ class CopilotCLI:
                 "message": f"Unexpected error: {str(e)}"
             }
     
-    async def execute_prompt_async(self, prompt: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def execute_prompt_async(self, prompt: str, options: Optional[Dict[str, Any]] = None, cwd: Optional[str] = None) -> Dict[str, Any]:
         """Execute an asynchronous prompt via Copilot CLI.
         
         Args:
@@ -117,6 +157,7 @@ class CopilotCLI:
                 - branch: Git branch to use
                 - worktree: Worktree path for background agent
                 - session_id: Existing session ID to continue
+            cwd: Optional working directory for the command execution.
         
         Returns:
             Dict with status and response from Copilot CLI
@@ -134,23 +175,26 @@ class CopilotCLI:
             }
         
         try:
-            # Build command
-            command = ['copilot', 'prompt', '-i', prompt, '-o', 'json']
+            command = self._build_command(prompt, options)
             
-            # Add optional parameters if provided
-            if options:
-                if 'branch' in options:
-                    command.extend(['--branch', options['branch']])
-                if 'worktree' in options:
-                    command.extend(['--worktree', options['worktree']])
-                if 'session_id' in options:
-                    command.extend(['--session', options['session_id']])
+            # Log the full input
+            import datetime
+            timestamp = datetime.datetime.now().isoformat()
+            log_entry = {
+                "timestamp": timestamp,
+                "type": "copilot_execute_async",
+                "prompt": prompt,
+                "options": options,
+                "command": command,
+                "cwd": cwd
+            }
             
             # Execute command asynchronously
             process = await asyncio.create_subprocess_exec(
                 *command,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                cwd=cwd
             )
             
             try:
@@ -166,29 +210,41 @@ class CopilotCLI:
                     "message": f"Command timed out after {self.timeout} seconds"
                 }
             
+            # Log the full output
+            log_entry["exit_code"] = process.returncode
+            log_entry["stdout"] = stdout.decode()
+            log_entry["stderr"] = stderr.decode()
+            
+            # Write detailed log to file
+            log_file = self.log_dir / f"copilot_async_{timestamp.replace(':', '-')}.json"
+            try:
+                import json as json_module
+                with open(log_file, 'w') as f:
+                    json_module.dump(log_entry, f, indent=2)
+            except Exception as log_error:
+                print(f"Warning: Could not write log file: {log_error}")
+            
+            parsed = self._parse_output(stdout.decode())
             if process.returncode == 0:
-                try:
-                    # Parse JSON output
-                    output = json.loads(stdout.decode())
-                    return {
-                        "status": "success",
-                        "output": output,
-                        "prompt": prompt
-                    }
-                except json.JSONDecodeError:
-                    # If not valid JSON, return raw output
-                    return {
-                        "status": "success",
-                        "output": stdout.decode(),
-                        "prompt": prompt,
-                        "raw": True
-                    }
-            else:
                 return {
-                    "status": "error",
-                    "message": stderr.decode() or "Command failed",
-                    "exit_code": process.returncode
+                    "status": "success",
+                    "output": parsed,
+                    "prompt": prompt,
+                    "full_stdout": stdout.decode(),
+                    "full_stderr": stderr.decode(),
+                    "command": ' '.join(command),
+                    "log_file": str(log_file)
                 }
+
+            return {
+                "status": "error",
+                "message": stderr.decode() or "Command failed",
+                "exit_code": process.returncode,
+                "full_stdout": stdout.decode(),
+                "full_stderr": stderr.decode(),
+                "command": ' '.join(command),
+                "log_file": str(log_file)
+            }
         
         except Exception as e:
             return {
@@ -213,55 +269,21 @@ class CopilotCLI:
                 "status": "error",
                 "message": "Copilot CLI is not installed or not in PATH"
             }
-        
+
+        return {
+            "status": "success",
+            "sessions": [],
+            "count": 0,
+            "message": "Session listing is not supported by this Copilot CLI version"
+        }
+
+    @staticmethod
+    def _parse_output(raw_output: str) -> Any:
+        """Parse CLI output, returning JSON when possible."""
         try:
-            # Execute copilot session list command
-            result = subprocess.run(
-                ['copilot', 'session', 'list', '-o', 'json'],
-                capture_output=True,
-                text=True,
-                timeout=self.timeout
-            )
-            
-            if result.returncode == 0:
-                try:
-                    # Parse JSON output
-                    sessions = json.loads(result.stdout)
-                    # Ensure sessions is a list
-                    if not isinstance(sessions, list):
-                        # If single session object, wrap in list
-                        sessions = [sessions] if sessions else []
-                    return {
-                        "status": "success",
-                        "sessions": sessions,
-                        "count": len(sessions)
-                    }
-                except json.JSONDecodeError:
-                    # If not valid JSON, parse line by line
-                    lines = result.stdout.strip().split('\n')
-                    sessions = [{"session_id": line.strip()} for line in lines if line.strip()]
-                    return {
-                        "status": "success",
-                        "sessions": sessions,
-                        "count": len(sessions)
-                    }
-            else:
-                return {
-                    "status": "error",
-                    "message": result.stderr or "Failed to list sessions",
-                    "exit_code": result.returncode
-                }
-        
-        except subprocess.TimeoutExpired:
-            return {
-                "status": "error",
-                "message": f"Command timed out after {self.timeout} seconds"
-            }
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"Unexpected error: {str(e)}"
-            }
+            return json.loads(raw_output)
+        except json.JSONDecodeError:
+            return raw_output
 
 
 # Global Copilot CLI instance
