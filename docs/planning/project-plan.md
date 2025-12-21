@@ -68,23 +68,27 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 - [x] Agent definitions
 - [x] Skills documentation
 
+### 1.10 Testing Infrastructure (Priority: High) 🔄
+- [ ] Unit test framework setup (pytest, pytest-asyncio, pytest-cov)
+- [ ] Unit tests for core modules
+  - [ ] config_loader.py tests (>90% coverage)
+  - [ ] git_operations.py tests (>85% coverage)
+  - [ ] copilot_cli.py tests (>85% coverage)
+- [ ] API integration tests (>80% coverage)
+  - [ ] Test all 8 endpoints
+  - [ ] Test error handling
+  - [ ] Test request validation
+- [ ] Mock external dependencies (Git, Copilot CLI)
+- [ ] Test coverage reporting (>80% overall)
+- [ ] CI/CD integration for tests (optional)
+
+**Timeline**: 3-4 days
+**Dependencies**: None
+**See**: `docs/planning/testing-plan.md` for detailed implementation plan
+
 ## Phase 2: Enhancement (Planned)
 
-### 2.1 Testing Infrastructure (Priority: High)
-- [ ] Unit test framework setup
-- [ ] Unit tests for core modules
-  - [ ] config_loader.py tests
-  - [ ] git_operations.py tests
-  - [ ] copilot_cli.py tests
-- [ ] API integration tests
-- [ ] Mock external dependencies
-- [ ] Test coverage reporting
-- [ ] CI/CD integration for tests
-
-**Timeline**: 1-2 weeks
-**Dependencies**: None
-
-### 2.2 Additional CLI Tools (Priority: High)
+### 2.1 Additional CLI Tools (Priority: High)
 - [ ] AWS CLI integration
   - [ ] Module: `aws_cli.py`
   - [ ] Endpoints: `/aws/execute`, `/aws/config`
@@ -104,7 +108,7 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 **Timeline**: 2-3 weeks
 **Dependencies**: Testing infrastructure
 
-### 2.3 Advanced Git Operations (Priority: Medium)
+### 2.2 Advanced Git Operations (Priority: Medium)
 - [ ] Git stash operations
   - [ ] Stash save/pop/list
   - [ ] API endpoints
@@ -121,7 +125,7 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 **Timeline**: 2 weeks
 **Dependencies**: Testing infrastructure
 
-### 2.4 Authentication & Authorization (Priority: High)
+### 2.3 Authentication & Authorization (Priority: High)
 - [ ] Authentication system
   - [ ] Choose method (JWT/API Key/OAuth)
   - [ ] Implement authentication middleware
@@ -138,7 +142,7 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 **Timeline**: 2-3 weeks
 **Dependencies**: Testing infrastructure
 
-### 2.5 WebSocket Support (Priority: Medium)
+### 2.4 WebSocket Support (Priority: Medium)
 - [ ] WebSocket infrastructure
   - [ ] Connection management
   - [ ] Authentication for WebSocket
@@ -154,7 +158,7 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 **Timeline**: 2 weeks
 **Dependencies**: Authentication system
 
-### 2.6 Caching Layer (Priority: Medium)
+### 2.5 Caching Layer (Priority: Medium)
 - [ ] Cache implementation
   - [ ] Choose cache backend (Redis/in-memory)
   - [ ] Cache configuration
@@ -172,7 +176,7 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 **Timeline**: 1 week
 **Dependencies**: None
 
-### 2.7 Job Queue System (Priority: Low)
+### 2.6 Job Queue System (Priority: Low)
 - [ ] Queue infrastructure
   - [ ] Choose queue system (Celery/RQ)
   - [ ] Worker configuration
@@ -349,17 +353,20 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 
 ## Success Metrics
 
-### Phase 1 (Completed)
+### Phase 1 (In Progress)
 - [x] Core API functional
 - [x] Web UI operational
 - [x] Documentation complete
 - [x] Docker deployment working
+- [ ] Test coverage > 80%
+- [ ] All unit tests passing
+- [ ] All integration tests passing
 
 ### Phase 2
-- [ ] Test coverage > 70%
 - [ ] 3+ CLI tools integrated
 - [ ] Authentication implemented
 - [ ] Response time < 200ms (p95)
+- [ ] WebSocket support operational
 
 ### Phase 3
 - [ ] 99.9% uptime
@@ -395,19 +402,26 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 
 ## Next Steps
 
-### Immediate (Next 2 Weeks)
-1. Set up testing infrastructure
-2. Write unit tests for existing code
-3. Begin AWS CLI integration
+### Immediate (Next 3-4 Days) - Phase 1.10 Testing
+1. **Day 1**: Set up testing infrastructure and write config_loader tests
+2. **Day 2**: Write git_operations and copilot_cli unit tests
+3. **Day 3**: Write API integration tests and coverage analysis
+4. **Day 4**: CI/CD integration (optional)
+
+### Short Term (1-2 Weeks) - Complete Phase 1
+1. Achieve >80% test coverage
+2. All tests passing
+3. Documentation updates with testing info
 4. Set up CI/CD pipeline
 
-### Short Term (1-2 Months)
-1. Complete additional CLI integrations
-2. Implement authentication system
-3. Add WebSocket support
-4. Performance optimization
+### Medium Term (1-2 Months) - Phase 2
+1. Begin AWS CLI integration
+2. Complete additional CLI integrations
+3. Implement authentication system
+4. Add WebSocket support
+5. Performance optimization
 
-### Long Term (3-6 Months)
+### Long Term (3-6 Months) - Phase 3+
 1. Production deployment
 2. Monitoring and observability
 3. Database integration
@@ -416,5 +430,5 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 ---
 
 **Last Updated**: December 21, 2024
-**Status**: Phase 1 Complete, Phase 2 Planning
+**Status**: Phase 1 In Progress - Testing Infrastructure
 **Next Review**: January 2025
