@@ -22,14 +22,10 @@ class CLIWrapper:
     
     def _validate_cli_available(self) -> bool:
         """Check if CLI tool is installed."""
+        import shutil
         try:
-            result = subprocess.run(
-                ['which', self.cli_name],
-                capture_output=True,
-                timeout=5
-            )
-            return result.returncode == 0
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return shutil.which(self.cli_name) is not None
+        except Exception:
             return False
     
     def execute(self, args: list) -> Dict[str, Any]:
@@ -346,14 +342,17 @@ def sanitize_path(path: str) -> str:
     Returns:
         Sanitized path
     """
+    import os
+    from pathlib import Path
+    
     # Remove null bytes
     path = path.replace('\0', '')
     
-    # Normalize path separators
-    path = path.replace('\\', '/')
-    
     # Remove leading/trailing whitespace
     path = path.strip()
+    
+    # Normalize path (handles separators cross-platform)
+    path = os.path.normpath(path)
     
     return path
 
@@ -367,7 +366,10 @@ def validate_command_args(args: list) -> Optional[str]:
     Returns:
         Error message if unsafe, None if safe
     """
-    dangerous_patterns = [';', '|', '&', '$', '`', '>', '<', '\n']
+    dangerous_patterns = [
+        ';', '|', '&', '$', '`', '>', '<', '\n',
+        '(', ')', '{', '}', '*', '?', '[', ']'
+    ]
     
     for arg in args:
         for pattern in dangerous_patterns:
