@@ -1,31 +1,70 @@
 """Main FastAPI application for agent-cli-orchestrator."""
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import os
+import asyncio
 
 from config_loader import config
 from git_operations import GitOperations
 from copilot_cli import copilot_cli
+from activity_log import activity_log
 
 
 # Pydantic models
 class PromptRequest(BaseModel):
     prompt: str
     options: Optional[Dict[str, Any]] = None
+    repo_name: Optional[str] = None
+    show_full_output: Optional[bool] = False
 
 
 class BranchSelectRequest(BaseModel):
     branch: str
+    repo_name: Optional[str] = None
 
 
 class WorktreeCreateRequest(BaseModel):
     path: str
     branch: str
     create_branch: Optional[bool] = False
+    repo_name: Optional[str] = None
+
+
+
+def resolve_repo_path(repo_name: Optional[str] = None) -> str:
+    """Resolve repository name to absolute path.
+    
+    Args:
+        repo_name: Repository name from config, or None for default
+        
+    Returns:
+        Absolute path to the repository
+        
+    Raises:
+        HTTPException: If repo_name is not found in configuration
+    """
+    repo_path = config.get_repository_path(repo_name)
+    if repo_path is None:
+        if repo_name:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Repository '{repo_name}' not found in configuration"
+            )
+        else:
+            raise HTTPException(
+                status_code=500, 
+                detail="No default repository configured"
+            )
+    
+    # Convert to absolute path
+    if not os.path.isabs(repo_path):
+        repo_path = os.path.abspath(repo_path)
+    
+    return repo_path
 
 
 # Initialize FastAPI app
@@ -51,48 +90,127 @@ async def root():
             "GET /branches": "List all branches (local and remote)",
             "GET /worktrees": "List all worktrees",
             "GET /sessions": "List active Copilot CLI sessions",
+            "GET /logs": "List recent activity logs",
+            "GET /logs/copilot": "List detailed Copilot execution logs with full input/output",
             "POST /branch/select": "Switch to a branch",
             "POST /worktree/create": "Create a new worktree",
             "POST /prompt": "Execute synchronous Copilot CLI prompt",
             "POST /prompt/async": "Execute asynchronous Copilot CLI prompt",
-            "GET /ui": "Web interface for testing"
+            "POST /prompt/stream": "Execute Copilot CLI prompt with real-time streaming output (SSE)",
+            "GET /ui": "Web interface for testing",
+            "GET /streaming-test": "Streaming output test page"
         }
     }
 
 
-@app.get("/repo")
-async def get_repository():
-    """Get repository name."""
+@app.get("/streaming-test", response_class=HTMLResponse)
+async def streaming_test():
+    """Serve the streaming test page."""
+    with open("/workspaces/lioncubs/agent-cli-orchestrator/test_streaming.html", "r") as f:
+        return f.read()
+
+
+@app.get("/repos")
+async def list_repos():
+    """List all configured repositories."""
     try:
-        repo_name = git_ops.get_repository_name()
+        repos = config.repositories()
+        repo_list = []
+        for repo in repos:
+            repo_list.append({
+                "name": repo.get("name"),
+                "path": repo.get("path"),
+                "default": repo.get("default", False),
+                "worktrees_path": repo.get("worktrees_path")
+            })
+        
+        activity_log.add(
+            action="list_repos",
+            status="success",
+            payload={},
+            result={"repositories": repo_list}
+        )
+        
         return {
-            "repository": repo_name,
-            "configured_name": config.repository_name
+            "status": "success",
+            "repositories": repo_list,
+            "count": len(repo_list)
         }
     except Exception as e:
+        activity_log.add(
+            action="list_repos",
+            status="error",
+            payload={},
+            result={"message": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/repo")
+async def get_repository(repo_name: Optional[str] = None):
+    """Get repository name."""
+    try:
+        repo_path = resolve_repo_path(repo_name)
+        temp_git_ops = GitOperations(repo_path=repo_path)
+        repo_name_result = temp_git_ops.get_repository_name()
+        activity_log.add(
+            action="get_repository",
+            status="success",
+            payload={"repo_name": repo_name},
+            result={"repository": repo_name_result, "path": repo_path}
+        )
+        return {
+            "repository": repo_name_result,
+            "configured_name": repo_name or config.repository_name,
+            "path": repo_path
+        }
+    except Exception as e:
+        activity_log.add(
+            action="get_repository",
+            status="error",
+            payload={"repo_name": repo_name},
+            result={"message": str(e)}
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/branch/current")
-async def get_current_branch():
+async def get_current_branch(repo_name: Optional[str] = None):
     """Get the current branch."""
     try:
-        branch = git_ops.get_current_branch()
-        return {
-            "branch": branch
-        }
+        repo_path = resolve_repo_path(repo_name)
+        temp_git_ops = GitOperations(repo_path=repo_path)
+        branch = temp_git_ops.get_current_branch()
+        activity_log.add(
+            action="get_current_branch",
+            status="success",
+            payload={"repo_name": repo_name},
+            result={"branch": branch}
+        )
+        return {"branch": branch, "repository": repo_name or config.repository_name}
     except Exception as e:
+        activity_log.add(
+            action="get_current_branch",
+            status="error",
+            payload={"repo_name": repo_name},
+            result={"message": str(e)}
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/branches")
-async def list_branches():
-    """List all Git branches (local and remote)."""
+async def list_branches(repo_name: Optional[str] = None):
+    """List all branches (local and remote)."""
     try:
-        branches = git_ops.list_branches()
-        local_count = sum(1 for b in branches if b['type'] == 'local')
-        remote_count = sum(1 for b in branches if b['type'] == 'remote')
-        return {
+        repo_path = resolve_repo_path(repo_name)
+        temp_git_ops = GitOperations(repo_path=repo_path)
+        branches = temp_git_ops.list_branches()
+        
+        # Count by type
+        local_count = sum(1 for b in branches if b.get('type') == 'local')
+        remote_count = sum(1 for b in branches if b.get('type') == 'remote')
+        
+        result = {
             "branches": branches,
             "count": {
                 "total": len(branches),
@@ -100,63 +218,203 @@ async def list_branches():
                 "remote": remote_count
             }
         }
+        activity_log.add(
+            action="list_branches",
+            status="success",
+            payload={"repo_name": repo_name},
+            result=result
+        )
+        return result
     except Exception as e:
+        activity_log.add(
+            action="list_branches",
+            status="error",
+            payload={"repo_name": repo_name},
+            result={"message": str(e)}
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/branch/select")
 async def select_branch(request: BranchSelectRequest):
-    """Switch to a different branch."""
+    """Switch to a branch."""
     try:
-        result = git_ops.switch_branch(request.branch)
+        repo_path = resolve_repo_path(request.repo_name)
+        temp_git_ops = GitOperations(repo_path=repo_path)
+        result = temp_git_ops.switch_branch(request.branch)
+        
+        activity_log.add(
+            action="select_branch",
+            status="success",
+            payload={"branch": request.branch, "repo_name": request.repo_name},
+            result=result
+        )
         return result
-    except Exception as e:
+    except RuntimeError as e:
+        # Git operation errors (branch not found, etc.)
+        activity_log.add(
+            action="select_branch",
+            status="error",
+            payload={"branch": request.branch, "repo_name": request.repo_name},
+            result={"message": str(e)}
+        )
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        activity_log.add(
+            action="select_branch",
+            status="error",
+            payload={"branch": request.branch, "repo_name": request.repo_name},
+            result={"message": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/worktrees")
-async def list_worktrees():
-    """List all Git worktrees."""
+async def list_worktrees(repo_name: Optional[str] = None):
+    """List all worktrees."""
     try:
-        worktrees = git_ops.list_worktrees()
-        return {
+        repo_path = resolve_repo_path(repo_name)
+        temp_git_ops = GitOperations(repo_path=repo_path)
+        worktrees = temp_git_ops.list_worktrees()
+        result = {
             "worktrees": worktrees,
             "count": len(worktrees)
         }
+        activity_log.add(
+            action="list_worktrees",
+            status="success",
+            payload={"repo_name": repo_name},
+            result=result
+        )
+        return result
     except Exception as e:
+        activity_log.add(
+            action="list_worktrees",
+            status="error",
+            payload={"repo_name": repo_name},
+            result={"message": str(e)}
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/worktree/create")
 async def create_worktree(request: WorktreeCreateRequest):
-    """Create a new Git worktree."""
+    """Create a new worktree."""
     try:
-        result = git_ops.create_worktree(
+        repo_path = resolve_repo_path(request.repo_name)
+        temp_git_ops = GitOperations(repo_path=repo_path)
+        result = temp_git_ops.create_worktree(
             path=request.path,
             branch=request.branch,
             create_branch=request.create_branch
         )
+        
+        activity_log.add(
+            action="create_worktree",
+            status="success",
+            payload={
+                "path": request.path,
+                "branch": request.branch,
+                "create_branch": request.create_branch,
+                "repo_name": request.repo_name
+            },
+            result=result
+        )
         return result
-    except Exception as e:
+    except RuntimeError as e:
+        # Git operation errors
+        activity_log.add(
+            action="create_worktree",
+            status="error",
+            payload={
+                "path": request.path,
+                "branch": request.branch,
+                "create_branch": request.create_branch,
+                "repo_name": request.repo_name
+            },
+            result={"message": str(e)}
+        )
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        activity_log.add(
+            action="create_worktree",
+            status="error",
+            payload={
+                "path": request.path,
+                "branch": request.branch,
+                "create_branch": request.create_branch,
+                "repo_name": request.repo_name
+            },
+            result={"message": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/prompt")
 async def execute_prompt(request: PromptRequest):
     """Execute a synchronous Copilot CLI prompt."""
     try:
+        repo_path = resolve_repo_path(request.repo_name) if request.repo_name else None
         result = copilot_cli.execute_prompt(
             prompt=request.prompt,
-            options=request.options
+            options=request.options,
+            cwd=repo_path
         )
         
         if result.get("status") == "error":
+            activity_log.add(
+                action="execute_prompt",
+                status="error",
+                payload={
+                    "prompt": request.prompt,
+                    "options": request.options,
+                    "repo_name": request.repo_name
+                },
+                result=result
+            )
             raise HTTPException(status_code=400, detail=result.get("message"))
         
-        return result
+        # Determine response format based on show_full_output flag
+        if request.show_full_output:
+            response = result  # Include full_stdout and full_stderr
+        else:
+            # Return simplified response
+            response = {
+                "status": result.get("status"),
+                "output": result.get("output"),
+                "prompt": result.get("prompt"),
+                "log_file": result.get("log_file")
+            }
+        
+        activity_log.add(
+            action="execute_prompt",
+            status="success",
+            payload={
+                "prompt": request.prompt,
+                "options": request.options,
+                "repo_name": request.repo_name,
+                "show_full_output": request.show_full_output
+            },
+            result=response
+        )
+        return response
     except HTTPException:
         raise
     except Exception as e:
+        activity_log.add(
+            action="execute_prompt",
+            status="error",
+            payload={
+                "prompt": request.prompt,
+                "options": request.options,
+                "repo_name": request.repo_name
+            },
+            result={"message": str(e)}
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -164,9 +422,107 @@ async def execute_prompt(request: PromptRequest):
 async def execute_prompt_async(request: PromptRequest):
     """Execute an asynchronous Copilot CLI prompt."""
     try:
+        repo_path = resolve_repo_path(request.repo_name) if request.repo_name else None
         result = await copilot_cli.execute_prompt_async(
             prompt=request.prompt,
-            options=request.options
+            options=request.options,
+            cwd=repo_path
+        )
+        
+        if result.get("status") == "error":
+            activity_log.add(
+                action="execute_prompt_async",
+                status="error",
+                payload={
+                    "prompt": request.prompt,
+                    "options": request.options,
+                    "repo_name": request.repo_name
+                },
+                result=result
+            )
+            raise HTTPException(status_code=400, detail=result.get("message"))
+        
+        # Determine response format based on show_full_output flag
+        if request.show_full_output:
+            response = result  # Include full_stdout and full_stderr
+        else:
+            # Return simplified response
+            response = {
+                "status": result.get("status"),
+                "output": result.get("output"),
+                "prompt": result.get("prompt"),
+                "log_file": result.get("log_file")
+            }
+        
+        activity_log.add(
+            action="execute_prompt_async",
+            status="success",
+            payload={
+                "prompt": request.prompt,
+                "options": request.options,
+                "repo_name": request.repo_name,
+                "show_full_output": request.show_full_output
+            },
+            result=response
+        )
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        activity_log.add(
+            action="execute_prompt_async",
+            status="error",
+            payload={
+                "prompt": request.prompt,
+                "options": request.options,
+                "repo_name": request.repo_name
+            },
+            result={"message": str(e)}
+        )
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/prompt/stream")
+async def execute_prompt_streaming(request: PromptRequest):
+    """Execute a Copilot CLI prompt with real-time streaming output."""
+    
+    async def stream_generator():
+        """Generator that yields streaming output from Copilot CLI."""
+        try:
+            repo_path = resolve_repo_path(request.repo_name) if request.repo_name else None
+            
+            async for chunk in copilot_cli.execute_prompt_streaming(
+                prompt=request.prompt,
+                options=request.options,
+                cwd=repo_path
+            ):
+                yield f"data: {chunk}\n\n"
+            
+        except Exception as e:
+            import json
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+@app.get("/sessions")
+async def list_sessions():
+    """List active Copilot CLI sessions."""
+    try:
+        result = copilot_cli.list_sessions()
+        activity_log.add(
+            action="list_sessions",
+            status=result.get("status", "unknown"),
+            payload={},
+            result=result
         )
         
         if result.get("status") == "error":
@@ -179,18 +535,57 @@ async def execute_prompt_async(request: PromptRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/sessions")
-async def list_sessions():
-    """List active Copilot CLI sessions."""
+@app.get("/logs")
+async def list_logs(limit: Optional[int] = None):
+    """List recent activity logs."""
     try:
-        result = copilot_cli.list_sessions()
+        logs = activity_log.list(limit)
+        return {
+            "logs": logs,
+            "count": len(logs)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/logs/copilot")
+async def list_copilot_logs(limit: Optional[int] = 20):
+    """List detailed Copilot execution logs from log files."""
+    try:
+        from pathlib import Path
+        import json
         
-        if result.get("status") == "error":
-            raise HTTPException(status_code=400, detail=result.get("message"))
+        log_dir = Path(config.copilot_log_dir)
+        if not log_dir.exists():
+            return {
+                "logs": [],
+                "count": 0,
+                "message": "Log directory does not exist"
+            }
         
-        return result
-    except HTTPException:
-        raise
+        # Get all JSON log files
+        log_files = sorted(log_dir.glob("copilot_*.json"), key=lambda x: x.stat().st_mtime, reverse=True)
+        
+        logs = []
+        for log_file in log_files[:limit]:
+            try:
+                with open(log_file, 'r') as f:
+                    log_data = json.load(f)
+                    logs.append({
+                        "file": log_file.name,
+                        "data": log_data
+                    })
+            except Exception as e:
+                logs.append({
+                    "file": log_file.name,
+                    "error": f"Failed to read log: {str(e)}"
+                })
+        
+        return {
+            "logs": logs,
+            "count": len(logs),
+            "total_files": len(log_files)
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -345,6 +740,44 @@ async def web_interface():
                 color: #27ae60;
             }
             
+            .stream-line {
+                margin: 2px 0;
+                line-height: 1.4;
+            }
+            
+            .stream-stdout {
+                color: #2c3e50;
+            }
+            
+            .stream-stderr {
+                color: #e74c3c;
+                font-weight: 500;
+            }
+            
+            .stream-start {
+                color: #27ae60;
+                font-weight: bold;
+                border-bottom: 1px solid #27ae60;
+                padding-bottom: 5px;
+                margin-bottom: 5px;
+            }
+            
+            .stream-complete {
+                color: #27ae60;
+                font-weight: bold;
+                border-top: 1px solid #27ae60;
+                padding-top: 5px;
+                margin-top: 5px;
+            }
+            
+            .stream-error {
+                color: #e74c3c;
+                font-weight: bold;
+                background: #fee;
+                padding: 5px;
+                border-radius: 4px;
+            }
+            
             .info-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -408,6 +841,7 @@ async def web_interface():
                     <div class="button-group">
                         <button onclick="executePrompt(false)">Execute Synchronous</button>
                         <button onclick="executePrompt(true)">Execute Async</button>
+                        <button onclick="executePromptStreaming()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">🔴 Execute with Live Streaming</button>
                     </div>
                     <div id="promptOutput" class="output" style="display: none;"></div>
                 </div>
@@ -415,6 +849,10 @@ async def web_interface():
                 <!-- Branch Management Section -->
                 <div class="section">
                     <h2>🌿 Branch Management</h2>
+                    <div class="button-group" style="margin-bottom: 12px;">
+                        <button onclick="listBranches()">List Branches</button>
+                    </div>
+                    <div id="branchesOutput" class="output" style="display: none;"></div>
                     <div class="form-group">
                         <label for="branchInput">Branch name:</label>
                         <input type="text" id="branchInput" placeholder="e.g., feature/new-feature">
@@ -444,6 +882,20 @@ async def web_interface():
                     </div>
                     <button onclick="createWorktree()">Create Worktree</button>
                     <div id="worktreeOutput" class="output" style="display: none;"></div>
+                </div>
+
+                <!-- Activity Logs Section -->
+                <div class="section">
+                    <h2>📜 Activity Logs</h2>
+                    <div class="form-group">
+                        <label for="logLimit">Entries to fetch (latest):</label>
+                        <input type="number" id="logLimit" value="50" min="1" max="200">
+                    </div>
+                    <div class="button-group">
+                        <button onclick="loadLogs()">Load Activity Logs</button>
+                        <button onclick="loadCopilotLogs()">Load Copilot Full Logs</button>
+                    </div>
+                    <div id="logsOutput" class="output" style="display: none;"></div>
                 </div>
             </div>
         </div>
@@ -513,6 +965,114 @@ async def web_interface():
                 }
             }
             
+            async function executePromptStreaming() {
+                const prompt = document.getElementById('promptInput').value.trim();
+                const sessionId = document.getElementById('sessionId').value.trim();
+                const output = document.getElementById('promptOutput');
+                
+                if (!prompt) {
+                    alert('Please enter a prompt');
+                    return;
+                }
+                
+                output.style.display = 'block';
+                output.innerHTML = '<div class="stream-start">🔴 Streaming output - live...</div>';
+                
+                try {
+                    const requestBody = { prompt: prompt };
+                    
+                    if (sessionId) {
+                        requestBody.options = { session_id: sessionId };
+                    }
+                    
+                    const response = await fetch('/prompt/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    
+                    while (true) {
+                        const {done, value} = await reader.read();
+                        if (done) break;
+                        
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.substring(6).trim();
+                                if (data) {
+                                    try {
+                                        const event = JSON.parse(data);
+                                        handleStreamEvent(event, output);
+                                    } catch (e) {
+                                        console.error('Failed to parse event:', data);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    output.innerHTML += '<div class="stream-error">✗ Error: ' + error.message + '</div>';
+                }
+            }
+            
+            function handleStreamEvent(event, output) {
+                let lineDiv = document.createElement('div');
+                lineDiv.className = 'stream-line';
+                
+                switch (event.type) {
+                    case 'start':
+                        lineDiv.className += ' stream-start';
+                        lineDiv.textContent = `Command: ${event.command}`;
+                        output.appendChild(lineDiv);
+                        
+                        let cwdDiv = document.createElement('div');
+                        cwdDiv.className = 'stream-line stream-start';
+                        cwdDiv.textContent = `Working directory: ${event.cwd}`;
+                        output.appendChild(cwdDiv);
+                        break;
+                    
+                    case 'stdout':
+                        lineDiv.className += ' stream-stdout';
+                        lineDiv.textContent = event.data;
+                        output.appendChild(lineDiv);
+                        break;
+                    
+                    case 'stderr':
+                        lineDiv.className += ' stream-stderr';
+                        lineDiv.textContent = `[stderr] ${event.data}`;
+                        output.appendChild(lineDiv);
+                        break;
+                    
+                    case 'complete':
+                        lineDiv.className += ' stream-complete';
+                        const status = event.exit_code === 0 ? '✓ Completed successfully' : `⚠ Exited with code ${event.exit_code}`;
+                        lineDiv.textContent = status;
+                        output.appendChild(lineDiv);
+                        break;
+                    
+                    case 'error':
+                        lineDiv.className += ' stream-error';
+                        lineDiv.textContent = `ERROR: ${event.message}`;
+                        output.appendChild(lineDiv);
+                        break;
+                }
+                
+                // Auto-scroll to bottom
+                output.scrollTop = output.scrollHeight;
+            }
+            
             async function switchBranch() {
                 const branch = document.getElementById('branchInput').value.trim();
                 const output = document.getElementById('branchOutput');
@@ -540,6 +1100,27 @@ async def web_interface():
                         output.innerHTML = '<p class="success">✓ Success</p><pre>' + 
                             JSON.stringify(data, null, 2) + '</pre>';
                         await loadRepoInfo(); // Refresh branch info
+                    } else {
+                        output.innerHTML = '<p class="error">✗ Error</p><pre>' + 
+                            JSON.stringify(data, null, 2) + '</pre>';
+                    }
+                } catch (error) {
+                    output.innerHTML = '<p class="error">✗ Error: ' + error.message + '</p>';
+                }
+            }
+
+            async function listBranches() {
+                const output = document.getElementById('branchesOutput');
+                output.style.display = 'block';
+                output.innerHTML = '<p class="loading">Loading branches...</p>';
+                
+                try {
+                    const response = await fetch('/branches');
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        output.innerHTML = '<p class="success">✓ Branches</p><pre>' + 
+                            JSON.stringify(data, null, 2) + '</pre>';
                     } else {
                         output.innerHTML = '<p class="error">✗ Error</p><pre>' + 
                             JSON.stringify(data, null, 2) + '</pre>';
@@ -604,6 +1185,68 @@ async def web_interface():
                             JSON.stringify(data, null, 2) + '</pre>';
                     } else {
                         output.innerHTML = '<p class="error">✗ Error</p><pre>' + 
+                            JSON.stringify(data, null, 2) + '</pre>';
+                    }
+                } catch (error) {
+                    output.innerHTML = '<p class="error">✗ Error: ' + error.message + '</p>';
+                }
+            }
+
+            async function loadLogs() {
+                const limitInput = document.getElementById('logLimit');
+                const limit = parseInt(limitInput.value, 10) || 50;
+                const output = document.getElementById('logsOutput');
+                output.style.display = 'block';
+                output.innerHTML = '<p class="loading">Loading logs...</p>';
+
+                try {
+                    const response = await fetch(`/logs?limit=${encodeURIComponent(limit)}`);
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        output.innerHTML = '<p class="success">✓ Activity Logs</p><pre>' +
+                            JSON.stringify(data, null, 2) + '</pre>';
+                    } else {
+                        output.innerHTML = '<p class="error">✗ Error</p><pre>' +
+                            JSON.stringify(data, null, 2) + '</pre>';
+                    }
+                } catch (error) {
+                    output.innerHTML = '<p class="error">✗ Error: ' + error.message + '</p>';
+                }
+            }
+
+            async function loadCopilotLogs() {
+                const limitInput = document.getElementById('logLimit');
+                const limit = parseInt(limitInput.value, 10) || 20;
+                const output = document.getElementById('logsOutput');
+                output.style.display = 'block';
+                output.innerHTML = '<p class="loading">Loading Copilot detailed logs...</p>';
+
+                try {
+                    const response = await fetch(`/logs/copilot?limit=${encodeURIComponent(limit)}`);
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        let logHtml = '<p class="success">✓ Copilot Full Logs (' + data.count + ' of ' + data.total_files + ' total)</p>';
+                        
+                        if (data.logs && data.logs.length > 0) {
+                            data.logs.forEach((log, index) => {
+                                logHtml += '<div style="border-top: 2px solid #667eea; margin-top: 15px; padding-top: 10px;">';
+                                logHtml += '<strong style="color: #667eea;">Log #' + (index + 1) + ': ' + log.file + '</strong>';
+                                if (log.error) {
+                                    logHtml += '<p class="error">' + log.error + '</p>';
+                                } else if (log.data) {
+                                    logHtml += '<pre>' + JSON.stringify(log.data, null, 2) + '</pre>';
+                                }
+                                logHtml += '</div>';
+                            });
+                        } else {
+                            logHtml += '<p>No Copilot logs found.</p>';
+                        }
+                        
+                        output.innerHTML = logHtml;
+                    } else {
+                        output.innerHTML = '<p class="error">✗ Error</p><pre>' +
                             JSON.stringify(data, null, 2) + '</pre>';
                     }
                 } catch (error) {

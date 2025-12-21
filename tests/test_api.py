@@ -15,9 +15,11 @@ def client():
 
 @pytest.fixture
 def mock_git_ops():
-    """Mock GitOperations for testing."""
-    with patch('main.git_ops') as mock:
-        yield mock
+    """Mock GitOperations class for testing."""
+    with patch('main.GitOperations') as MockClass:
+        mock_instance = Mock()
+        MockClass.return_value = mock_instance
+        yield mock_instance
 
 
 @pytest.fixture
@@ -347,6 +349,16 @@ class TestAPIEndpoints:
         assert "openapi" in data
         assert "info" in data
         assert data["info"]["title"] == "Agent CLI Orchestrator"    
+
+    def test_logs_endpoint_available(self, client):
+        """Test GET /logs returns activity entries."""
+        response = client.get("/logs")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "logs" in data
+        assert "count" in data
+
     def test_list_branches_success(self, client, mock_git_ops):
         """Test GET /branches returns list of branches."""
         mock_git_ops.list_branches.return_value = [

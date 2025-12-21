@@ -245,10 +245,12 @@ Execute a synchronous Copilot CLI prompt.
 ```json
 {
   "status": "success",
-  "output": {
-    // Copilot CLI JSON output
-  },
-  "prompt": "How do I create a Python function to reverse a string?"
+  "output": "The response from Copilot CLI",
+  "prompt": "How do I create a Python function to reverse a string?",
+  "full_stdout": "Complete stdout from copilot CLI execution",
+  "full_stderr": "",
+  "command": "copilot -p How do I create a Python function to reverse a string? --silent --allow-all-tools",
+  "log_file": "logs/copilot/copilot_2025-12-21T19-22-30.737080.json"
 }
 ```
 
@@ -284,6 +286,167 @@ Execute an asynchronous Copilot CLI prompt.
 This endpoint is useful for long-running prompts that may take significant time to process.
 
 **Supported options:** `branch`, `worktree`, `session_id` (same as `/prompt` endpoint)
+
+---
+
+#### POST `/prompt/stream`
+
+Execute a Copilot CLI prompt with **real-time streaming output** using Server-Sent Events (SSE).
+
+This endpoint provides line-by-line output as the Copilot CLI executes, allowing you to see what's happening in real-time instead of waiting for the entire command to complete.
+
+**Request Body:**
+```json
+{
+  "prompt": "what files are in this directory?",
+  "repo_name": "lioncubs",  // optional
+  "options": {}              // optional
+}
+```
+
+**Response:** Server-Sent Events (SSE) stream with `Content-Type: text/event-stream`
+
+Each event is a JSON object prefixed with `data: `:
+
+```
+data: {"type": "start", "timestamp": "2025-12-21T...", "command": "copilot -p ...", "cwd": "/path"}
+
+data: {"type": "stdout", "data": "Files in directory:"}
+
+data: {"type": "stdout", "data": "  main.py"}
+
+data: {"type": "stderr", "data": "Warning: some warning message"}
+
+data: {"type": "complete", "exit_code": 0, "timestamp": "2025-12-21T..."}
+```
+
+**Event Types:**
+
+| Type | Description | Fields |
+|------|-------------|--------|
+| `start` | Command execution started | `timestamp`, `command`, `cwd` |
+| `stdout` | Line from standard output | `data` (string) |
+| `stderr` | Line from standard error | `data` (string) |
+| `complete` | Command finished | `exit_code`, `timestamp` |
+| `error` | Error occurred | `message` |
+
+**Use Cases:**
+- Interactive development and debugging
+- Monitoring long-running commands
+- Real-time progress visibility
+- Teaching/demonstration purposes
+
+**See also:** [STREAMING.md](STREAMING.md) for detailed documentation and examples.
+
+**JavaScript Example:**
+```javascript
+const response = await fetch('/prompt/stream', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({prompt: 'list files'})
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    
+    const chunk = decoder.decode(value);
+    // Parse SSE format and handle events
+    console.log(chunk);
+}
+```
+
+**Test Page:** Visit `/streaming-test` for an interactive demonstration.
+
+---
+
+### Activity Logs
+
+#### GET `/logs`
+
+Get recent activity logs from the orchestrator.
+
+**Query Parameters:**
+- `limit` (integer, optional): Maximum number of log entries to return
+
+**Response:**
+```json
+{
+  "logs": [
+    {
+      "timestamp": "2025-12-21T19:22:30.737080",
+      "action": "prompt_sync",
+      "status": "success",
+      "payload": {
+        "prompt": "list files in current directory",
+        "options": null
+      },
+      "result": {
+        "status": "success"
+      }
+    }
+  ],
+  "count": 1
+}
+```
+
+**Status Codes:**
+- `200 OK`: Logs retrieved successfully
+- `500 Internal Server Error`: Error retrieving logs
+
+---
+
+#### GET `/logs/copilot`
+
+Get detailed Copilot CLI execution logs with full input/output.
+
+This endpoint provides access to the complete execution logs stored in JSON files,
+including the full prompt, command executed, stdout, stderr, and exit code.
+
+**Query Parameters:**
+- `limit` (integer, optional): Maximum number of log files to return (default: 20)
+
+**Response:**
+```json
+{
+  "logs": [
+    {
+      "file": "copilot_2025-12-21T19-22-30.737080.json",
+      "data": {
+        "timestamp": "2025-12-21T19:22:30.737080",
+        "type": "copilot_execute",
+        "prompt": "list files in current directory",
+        "options": null,
+        "command": [
+          "copilot",
+          "-p",
+          "list files in current directory",
+          "--silent",
+          "--allow-all-tools"
+        ],
+        "exit_code": 0,
+        "stdout": "Complete output from Copilot CLI...",
+        "stderr": ""
+      }
+    }
+  ],
+  "count": 1,
+  "total_files": 4
+}
+```
+
+**Status Codes:**
+- `200 OK`: Logs retrieved successfully
+- `500 Internal Server Error`: Error retrieving logs
+
+**Notes:**
+- Logs are stored in the directory specified by `copilot_log_dir` config (default: `logs/copilot/`)
+- Each log file contains the complete execution details for one Copilot CLI invocation
+- Logs are sorted by modification time (newest first)
+- The `total_files` field indicates how many log files exist in total
 
 ---
 

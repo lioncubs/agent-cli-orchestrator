@@ -10,9 +10,11 @@ from pathlib import Path
 def temp_config_file():
     """Create a temporary config file for testing."""
     content = """
-repository:
-  name: "test-repo"
-  default_branch: "main"
+repositories:
+  - name: "test-repo"
+    path: "."
+    default: true
+    worktrees_path: "./test-worktrees"
 
 server:
   host: "127.0.0.1"
@@ -21,9 +23,7 @@ server:
 copilot:
   enabled: true
   timeout: 60
-
-worktrees:
-  base_path: "./test-worktrees"
+  log_dir: "./logs/copilot"
 """
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write(content)

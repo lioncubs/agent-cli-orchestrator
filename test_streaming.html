@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Copilot CLI Streaming Test</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 {
+            color: #4ec9b0;
+        }
+        #output {
+            background: #252526;
+            border: 1px solid #3c3c3c;
+            padding: 15px;
+            min-height: 400px;
+            max-height: 600px;
+            overflow-y: auto;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .stdout {
+            color: #d4d4d4;
+        }
+        .stderr {
+            color: #f48771;
+        }
+        .start {
+            color: #4ec9b0;
+            font-weight: bold;
+        }
+        .complete {
+            color: #4ec9b0;
+            font-weight: bold;
+        }
+        .error {
+            color: #f44747;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #3c3c3c;
+            border: 1px solid #5c5c5c;
+            color: #d4d4d4;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .timestamp {
+            color: #858585;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 Copilot CLI Streaming Output Test</h1>
+    
+    <div class="controls">
+        <label for="prompt">Prompt:</label>
+        <input type="text" id="prompt" placeholder="Enter your prompt here..." value="what files are in this directory?">
+        
+        <label for="repo">Repository (optional):</label>
+        <input type="text" id="repo" placeholder="Repository name (leave empty for default)">
+        
+        <button id="executeBtn" onclick="executePrompt()">Execute with Streaming</button>
+        <button onclick="clearOutput()">Clear Output</button>
+    </div>
+    
+    <h2>Live Output:</h2>
+    <div id="output"></div>
+
+    <script>
+        let eventSource = null;
+        const outputDiv = document.getElementById('output');
+        const executeBtn = document.getElementById('executeBtn');
+
+        function addLine(text, className = '') {
+            const line = document.createElement('div');
+            if (className) {
+                line.className = className;
+            }
+            line.textContent = text;
+            outputDiv.appendChild(line);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        }
+
+        function addTimestamp() {
+            const now = new Date().toISOString();
+            addLine(`[${now}]`, 'timestamp');
+        }
+
+        async function executePrompt() {
+            const prompt = document.getElementById('prompt').value;
+            const repo = document.getElementById('repo').value;
+            
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+
+            // Disable button during execution
+            executeBtn.disabled = true;
+            executeBtn.textContent = 'Executing...';
+
+            // Clear previous output
+            clearOutput();
+            addTimestamp();
+            addLine('='.repeat(80), 'start');
+            addLine(`Executing prompt: "${prompt}"`, 'start');
+            if (repo) {
+                addLine(`Repository: ${repo}`, 'start');
+            }
+            addLine('='.repeat(80), 'start');
+            addLine('');
+
+            try {
+                // Use fetch to POST and get streaming response
+                const response = await fetch('/prompt/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        repo_name: repo || null,
+                        options: null
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.substring(6);
+                            if (data.trim()) {
+                                try {
+                                    const event = JSON.parse(data);
+                                    handleEvent(event);
+                                } catch (e) {
+                                    console.error('Failed to parse event:', data);
+                                }
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                addLine('', '');
+                addLine(`ERROR: ${error.message}`, 'error');
+            } finally {
+                executeBtn.disabled = false;
+                executeBtn.textContent = 'Execute with Streaming';
+                addLine('', '');
+                addTimestamp();
+            }
+        }
+
+        function handleEvent(event) {
+            switch (event.type) {
+                case 'start':
+                    addLine(`Command: ${event.command}`, 'start');
+                    addLine(`Working directory: ${event.cwd}`, 'start');
+                    addLine('--- Output Start ---', 'start');
+                    break;
+                
+                case 'stdout':
+                    addLine(event.data, 'stdout');
+                    break;
+                
+                case 'stderr':
+                    addLine(`[stderr] ${event.data}`, 'stderr');
+                    break;
+                
+                case 'complete':
+                    addLine('--- Output End ---', 'complete');
+                    addLine(`Exit code: ${event.exit_code}`, 'complete');
+                    if (event.exit_code !== 0) {
+                        addLine('⚠️  Command exited with non-zero status', 'error');
+                    } else {
+                        addLine('✓ Command completed successfully', 'complete');
+                    }
+                    break;
+                
+                case 'error':
+                    addLine(`ERROR: ${event.message}`, 'error');
+                    break;
+                
+                default:
+                    addLine(`Unknown event type: ${event.type}`, 'error');
+            }
+        }
+
+        function clearOutput() {
+            outputDiv.innerHTML = '';
+        }
+
+        // Allow Enter key to execute
+        document.getElementById('prompt').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !executeBtn.disabled) {
+                executePrompt();
+            }
+        });
+    </script>
+</body>
+</html>

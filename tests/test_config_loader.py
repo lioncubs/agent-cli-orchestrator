@@ -33,7 +33,13 @@ class TestConfig:
         """Test getting nested configuration values with dot notation."""
         config = Config(temp_config_file)
         
-        assert config.get('repository.name') == "test-repo"
+        # Test new repositories format
+        repos = config.get('repositories')
+        assert repos is not None
+        assert len(repos) > 0
+        assert repos[0]['name'] == "test-repo"
+        
+        # Test other dot notation
         assert config.get('server.port') == 8000
         assert config.get('copilot.enabled') is True
     
