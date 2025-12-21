@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  agent-cli-orchestrator:
+    build: .
+    container_name: agent-cli-orchestrator
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ~/.gitconfig:/root/.gitconfig:ro
+      - ~/.ssh:/root/.ssh:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python main.py
+    restart: unless-stopped
