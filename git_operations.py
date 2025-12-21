@@ -89,6 +89,41 @@ class GitOperations:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to create worktree: {e.stderr}")
     
+    def list_branches(self) -> List[Dict[str, str]]:
+        """List all Git branches (both local and remote)."""
+        try:
+            # Get local branches
+            local_output = self._run_command(['git', 'branch', '--format=%(refname:short)|%(HEAD)'])
+            branches = []
+            
+            for line in local_output.split('\n'):
+                if line:
+                    parts = line.split('|')
+                    branch_name = parts[0]
+                    is_current = parts[1] == '*' if len(parts) > 1 else False
+                    branches.append({
+                        'name': branch_name,
+                        'current': is_current,
+                        'type': 'local'
+                    })
+            
+            # Get remote branches
+            try:
+                remote_output = self._run_command(['git', 'branch', '-r', '--format=%(refname:short)'])
+                for line in remote_output.split('\n'):
+                    if line and not line.endswith('/HEAD'):
+                        branches.append({
+                            'name': line,
+                            'current': False,
+                            'type': 'remote'
+                        })
+            except subprocess.CalledProcessError:
+                pass  # Remote branches may not exist
+            
+            return branches
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to list branches: {e.stderr}")
+    
     def get_repository_name(self) -> str:
         """Get the repository name from Git remote."""
         try:

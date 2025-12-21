@@ -346,4 +346,77 @@ class TestAPIEndpoints:
         data = response.json()
         assert "openapi" in data
         assert "info" in data
-        assert data["info"]["title"] == "Agent CLI Orchestrator"
+        assert data["info"]["title"] == "Agent CLI Orchestrator"    
+    def test_list_branches_success(self, client, mock_git_ops):
+        """Test GET /branches returns list of branches."""
+        mock_git_ops.list_branches.return_value = [
+            {"name": "main", "current": True, "type": "local"},
+            {"name": "feature/test", "current": False, "type": "local"},
+            {"name": "origin/main", "current": False, "type": "remote"}
+        ]
+        
+        response = client.get("/branches")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "branches" in data
+        assert "count" in data
+        assert data["count"]["total"] == 3
+        assert data["count"]["local"] == 2
+        assert data["count"]["remote"] == 1
+        assert len(data["branches"]) == 3
+    
+    def test_list_branches_error(self, client, mock_git_ops):
+        """Test GET /branches handles errors."""
+        mock_git_ops.list_branches.side_effect = RuntimeError("Git error")
+        
+        response = client.get("/branches")
+        
+        assert response.status_code == 500
+        assert "detail" in response.json()
+    
+    def test_list_sessions_success(self, client, mock_copilot_cli):
+        """Test GET /sessions returns list of sessions."""
+        mock_copilot_cli.list_sessions.return_value = {
+            "status": "success",
+            "sessions": [
+                {"session_id": "abc123", "status": "active"},
+                {"session_id": "def456", "status": "active"}
+            ],
+            "count": 2
+        }
+        
+        response = client.get("/sessions")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["count"] == 2
+        assert len(data["sessions"]) == 2
+    
+    def test_list_sessions_empty(self, client, mock_copilot_cli):
+        """Test GET /sessions with no active sessions."""
+        mock_copilot_cli.list_sessions.return_value = {
+            "status": "success",
+            "sessions": [],
+            "count": 0
+        }
+        
+        response = client.get("/sessions")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["count"] == 0
+        assert data["sessions"] == []
+    
+    def test_list_sessions_error(self, client, mock_copilot_cli):
+        """Test GET /sessions handles errors."""
+        mock_copilot_cli.list_sessions.return_value = {
+            "status": "error",
+            "message": "Copilot CLI not available"
+        }
+        
+        response = client.get("/sessions")
+        
+        assert response.status_code == 400
+        assert "detail" in response.json()

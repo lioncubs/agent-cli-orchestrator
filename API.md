@@ -24,7 +24,9 @@ Get API information and available endpoints.
   "endpoints": {
     "GET /repo": "Get repository name",
     "GET /branch/current": "Get current branch",
+    "GET /branches": "List all branches (local and remote)",
     "GET /worktrees": "List all worktrees",
+    "GET /sessions": "List active Copilot CLI sessions",
     "POST /branch/select": "Switch to a branch",
     "POST /worktree/create": "Create a new worktree",
     "POST /prompt": "Execute synchronous Copilot CLI prompt",
@@ -98,6 +100,52 @@ Switch to a different Git branch.
 **Status Codes:**
 - `200 OK`: Branch switch successful
 - `400 Bad Request`: Invalid branch name or branch doesn't exist
+- `500 Internal Server Error`: Git command failed
+
+---
+
+#### GET `/branches`
+
+List all Git branches (both local and remote).
+
+**Response:**
+```json
+{
+  "branches": [
+    {
+      "name": "main",
+      "current": true,
+      "type": "local"
+    },
+    {
+      "name": "feature/test",
+      "current": false,
+      "type": "local"
+    },
+    {
+      "name": "origin/main",
+      "current": false,
+      "type": "remote"
+    },
+    {
+      "name": "origin/develop",
+      "current": false,
+      "type": "remote"
+    }
+  ],
+  "count": {
+    "total": 4,
+    "local": 2,
+    "remote": 2
+  }
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `500 Internal Server Error`: Failed to list branches
+
+---
 - `500 Internal Server Error`: Git operation failed
 
 ---
@@ -294,6 +342,51 @@ Currently, the API does not require authentication. In production environments, 
 
 ---
 
+### Copilot CLI Sessions
+
+#### GET `/sessions`
+
+List active GitHub Copilot CLI agent sessions.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "sessions": [
+    {
+      "session_id": "abc123-session-id",
+      "status": "active"
+    },
+    {
+      "session_id": "def456-session-id",
+      "status": "active"
+    }
+  ],
+  "count": 2
+}
+```
+
+**Empty Sessions Response:**
+```json
+{
+  "status": "success",
+  "sessions": [],
+  "count": 0
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `400 Bad Request`: Copilot CLI not available or error listing sessions
+- `500 Internal Server Error`: Unexpected error
+
+**Notes:**
+- Requires GitHub Copilot CLI to be installed and authenticated
+- Sessions represent active agent conversations that can be continued
+- Session IDs can be used with the `session_id` option in prompt endpoints
+
+---
+
 ## Rate Limiting
 
 No rate limiting is currently implemented. Consider adding rate limiting for production deployments to prevent abuse.
@@ -332,6 +425,16 @@ curl -X POST http://localhost:8000/branch/select \
 curl http://localhost:8000/worktrees
 ```
 
+**List branches:**
+```bash
+curl http://localhost:8000/branches
+```
+
+**List active Copilot sessions:**
+```bash
+curl http://localhost:8000/sessions
+```
+
 **Create worktree:**
 ```bash
 curl -X POST http://localhost:8000/worktree/create \
@@ -361,10 +464,28 @@ import requests
 response = requests.get('http://localhost:8000/repo')
 print(response.json())
 
+# List all branches
+response = requests.get('http://localhost:8000/branches')
+print(response.json())
+
+# List active Copilot sessions
+response = requests.get('http://localhost:8000/sessions')
+print(response.json())
+
 # Execute a Copilot prompt
 response = requests.post(
     'http://localhost:8000/prompt',
     json={'prompt': 'How to read a CSV file in Python?'}
+)
+print(response.json())
+
+# Continue an existing session
+response = requests.post(
+    'http://localhost:8000/prompt',
+    json={
+        'prompt': 'Can you add error handling to that code?',
+        'options': {'session_id': 'abc123-session-id'}
+    }
 )
 print(response.json())
 

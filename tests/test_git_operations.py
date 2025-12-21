@@ -246,3 +246,66 @@ branch refs/heads/feature/new
         repo_name = git_ops.get_repository_name()
         
         assert repo_name == "unknown"
+    
+    @patch('git_operations.subprocess.run')
+    def test_list_branches_success(self, mock_run):
+        """Test listing branches successfully."""
+        mock_run.side_effect = [
+            Mock(stdout="main|*\nfeature/test|\n", returncode=0),  # local branches
+            Mock(stdout="origin/main\norigin/develop\n", returncode=0)  # remote branches
+        ]
+        
+        git_ops = GitOperations()
+        branches = git_ops.list_branches()
+        
+        assert len(branches) == 4
+        # Check local branches
+        assert any(b['name'] == 'main' and b['current'] and b['type'] == 'local' for b in branches)
+        assert any(b['name'] == 'feature/test' and not b['current'] and b['type'] == 'local' for b in branches)
+        # Check remote branches
+        assert any(b['name'] == 'origin/main' and b['type'] == 'remote' for b in branches)
+        assert any(b['name'] == 'origin/develop' and b['type'] == 'remote' for b in branches)
+    
+    @patch('git_operations.subprocess.run')
+    def test_list_branches_local_only(self, mock_run):
+        """Test listing branches when no remote branches exist."""
+        mock_run.side_effect = [
+            Mock(stdout="main|*\n", returncode=0),  # local branches
+            subprocess.CalledProcessError(1, 'git', stderr="no remote")  # remote fails
+        ]
+        
+        git_ops = GitOperations()
+        branches = git_ops.list_branches()
+        
+        assert len(branches) == 1
+        assert branches[0]['name'] == 'main'
+        assert branches[0]['current']
+        assert branches[0]['type'] == 'local'
+    
+    @patch('git_operations.subprocess.run')
+    def test_list_branches_filters_head(self, mock_run):
+        """Test that HEAD pointer is filtered out from remote branches."""
+        mock_run.side_effect = [
+            Mock(stdout="main|*\n", returncode=0),
+            Mock(stdout="origin/main\norigin/HEAD\n", returncode=0)
+        ]
+        
+        git_ops = GitOperations()
+        branches = git_ops.list_branches()
+        
+        # Should not include origin/HEAD
+        assert not any(b['name'].endswith('/HEAD') for b in branches)
+    
+    @patch('git_operations.subprocess.run')
+    def test_list_branches_failure(self, mock_run):
+        """Test list branches failure."""
+        mock_run.side_effect = subprocess.CalledProcessError(
+            1, 'git', stderr="fatal: not a git repository"
+        )
+        
+        git_ops = GitOperations()
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            git_ops.list_branches()
+        
+        assert "Failed to list branches" in str(exc_info.value)

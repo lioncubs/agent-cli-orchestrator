@@ -368,6 +368,37 @@ Here are some example prompts that should work with the Copilot CLI integration:
 }
 ```
 
+### Session Management
+
+**List active Copilot sessions:**
+```bash
+curl http://localhost:8000/sessions
+```
+
+**Continue an existing session:**
+```json
+{
+  "prompt": "Can you add error handling to that code?",
+  "options": {
+    "session_id": "abc123-session-id"
+  }
+}
+```
+
+**List all Git branches:**
+```bash
+curl http://localhost:8000/branches
+```
+
+### API Endpoint Examples
+
+All prompts can be tested via:
+- **Web UI**: http://localhost:8000/ui
+- **API Endpoint**: `POST http://localhost:8000/prompt`
+- **Async Endpoint**: `POST http://localhost:8000/prompt/async`
+
+For detailed API documentation, see [API.md](API.md).
+
 ### Testing via Web Interface
 
 1. Navigate to http://localhost:8000/ui

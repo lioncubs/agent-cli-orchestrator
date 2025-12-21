@@ -48,7 +48,9 @@ async def root():
         "endpoints": {
             "GET /repo": "Get repository name",
             "GET /branch/current": "Get current branch",
+            "GET /branches": "List all branches (local and remote)",
             "GET /worktrees": "List all worktrees",
+            "GET /sessions": "List active Copilot CLI sessions",
             "POST /branch/select": "Switch to a branch",
             "POST /worktree/create": "Create a new worktree",
             "POST /prompt": "Execute synchronous Copilot CLI prompt",
@@ -78,6 +80,25 @@ async def get_current_branch():
         branch = git_ops.get_current_branch()
         return {
             "branch": branch
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/branches")
+async def list_branches():
+    """List all Git branches (local and remote)."""
+    try:
+        branches = git_ops.list_branches()
+        local_count = sum(1 for b in branches if b['type'] == 'local')
+        remote_count = sum(1 for b in branches if b['type'] == 'remote')
+        return {
+            "branches": branches,
+            "count": {
+                "total": len(branches),
+                "local": local_count,
+                "remote": remote_count
+            }
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -147,6 +168,22 @@ async def execute_prompt_async(request: PromptRequest):
             prompt=request.prompt,
             options=request.options
         )
+        
+        if result.get("status") == "error":
+            raise HTTPException(status_code=400, detail=result.get("message"))
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/sessions")
+async def list_sessions():
+    """List active Copilot CLI sessions."""
+    try:
+        result = copilot_cli.list_sessions()
         
         if result.get("status") == "error":
             raise HTTPException(status_code=400, detail=result.get("message"))

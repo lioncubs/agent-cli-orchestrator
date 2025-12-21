@@ -195,6 +195,69 @@ class CopilotCLI:
                 "status": "error",
                 "message": f"Unexpected error: {str(e)}"
             }
+    
+    def list_sessions(self) -> Dict[str, Any]:
+        """List active Copilot CLI sessions.
+        
+        Returns:
+            Dict with status and list of sessions
+        """
+        if not self.enabled:
+            return {
+                "status": "error",
+                "message": "Copilot CLI is disabled in configuration"
+            }
+        
+        if not self._validate_cli_available():
+            return {
+                "status": "error",
+                "message": "Copilot CLI is not installed or not in PATH"
+            }
+        
+        try:
+            # Execute copilot session list command
+            result = subprocess.run(
+                ['copilot', 'session', 'list', '-o', 'json'],
+                capture_output=True,
+                text=True,
+                timeout=self.timeout
+            )
+            
+            if result.returncode == 0:
+                try:
+                    # Parse JSON output
+                    sessions = json.loads(result.stdout)
+                    return {
+                        "status": "success",
+                        "sessions": sessions if isinstance(sessions, list) else [sessions],
+                        "count": len(sessions) if isinstance(sessions, list) else 1
+                    }
+                except json.JSONDecodeError:
+                    # If not valid JSON, parse line by line
+                    lines = result.stdout.strip().split('\n')
+                    sessions = [{"session_id": line.strip()} for line in lines if line.strip()]
+                    return {
+                        "status": "success",
+                        "sessions": sessions,
+                        "count": len(sessions)
+                    }
+            else:
+                return {
+                    "status": "error",
+                    "message": result.stderr or "Failed to list sessions",
+                    "exit_code": result.returncode
+                }
+        
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "error",
+                "message": f"Command timed out after {self.timeout} seconds"
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Unexpected error: {str(e)}"
+            }
 
 
 # Global Copilot CLI instance
