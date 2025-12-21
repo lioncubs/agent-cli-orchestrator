@@ -289,6 +289,80 @@ This endpoint is useful for long-running prompts that may take significant time 
 
 ---
 
+#### POST `/prompt/stream`
+
+Execute a Copilot CLI prompt with **real-time streaming output** using Server-Sent Events (SSE).
+
+This endpoint provides line-by-line output as the Copilot CLI executes, allowing you to see what's happening in real-time instead of waiting for the entire command to complete.
+
+**Request Body:**
+```json
+{
+  "prompt": "what files are in this directory?",
+  "repo_name": "lioncubs",  // optional
+  "options": {}              // optional
+}
+```
+
+**Response:** Server-Sent Events (SSE) stream with `Content-Type: text/event-stream`
+
+Each event is a JSON object prefixed with `data: `:
+
+```
+data: {"type": "start", "timestamp": "2025-12-21T...", "command": "copilot -p ...", "cwd": "/path"}
+
+data: {"type": "stdout", "data": "Files in directory:"}
+
+data: {"type": "stdout", "data": "  main.py"}
+
+data: {"type": "stderr", "data": "Warning: some warning message"}
+
+data: {"type": "complete", "exit_code": 0, "timestamp": "2025-12-21T..."}
+```
+
+**Event Types:**
+
+| Type | Description | Fields |
+|------|-------------|--------|
+| `start` | Command execution started | `timestamp`, `command`, `cwd` |
+| `stdout` | Line from standard output | `data` (string) |
+| `stderr` | Line from standard error | `data` (string) |
+| `complete` | Command finished | `exit_code`, `timestamp` |
+| `error` | Error occurred | `message` |
+
+**Use Cases:**
+- Interactive development and debugging
+- Monitoring long-running commands
+- Real-time progress visibility
+- Teaching/demonstration purposes
+
+**See also:** [STREAMING.md](STREAMING.md) for detailed documentation and examples.
+
+**JavaScript Example:**
+```javascript
+const response = await fetch('/prompt/stream', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({prompt: 'list files'})
+});
+
+const reader = response.body.getReader();
+const decoder = new TextDecoder();
+
+while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    
+    const chunk = decoder.decode(value);
+    // Parse SSE format and handle events
+    console.log(chunk);
+}
+```
+
+**Test Page:** Visit `/streaming-test` for an interactive demonstration.
+
+---
+
 ### Activity Logs
 
 #### GET `/logs`

@@ -277,6 +277,118 @@ class CopilotCLI:
             "message": "Session listing is not supported by this Copilot CLI version"
         }
 
+    async def execute_prompt_streaming(self, prompt: str, options: Optional[Dict[str, Any]] = None, cwd: Optional[str] = None):
+        """Execute a prompt and stream output line-by-line in real-time.
+        
+        Args:
+            prompt: The prompt text to send to Copilot
+            options: Optional parameters
+            cwd: Optional working directory
+            
+        Yields:
+            JSON strings with streaming output data
+        """
+        if not self.enabled:
+            yield json.dumps({"type": "error", "message": "Copilot CLI is disabled"}) + "\n"
+            return
+        
+        if not self._validate_cli_available():
+            yield json.dumps({"type": "error", "message": "Copilot CLI not available"}) + "\n"
+            return
+        
+        try:
+            command = self._build_command(prompt, options)
+            
+            # Log start
+            import datetime
+            timestamp = datetime.datetime.now().isoformat()
+            yield json.dumps({
+                "type": "start",
+                "timestamp": timestamp,
+                "command": ' '.join(command),
+                "cwd": cwd or "."
+            }) + "\n"
+            
+            # Start process
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=cwd
+            )
+            
+            # Stream stdout
+            async def read_stream(stream, stream_name):
+                while True:
+                    line = await stream.readline()
+                    if not line:
+                        break
+                    decoded = line.decode().rstrip('\n')
+                    if decoded:  # Only send non-empty lines
+                        yield json.dumps({
+                            "type": stream_name,
+                            "data": decoded
+                        }) + "\n"
+            
+            # Read both stdout and stderr concurrently
+            stdout_lines = []
+            stderr_lines = []
+            
+            async def collect_stdout():
+                async for chunk in read_stream(process.stdout, "stdout"):
+                    stdout_lines.append(chunk)
+                    yield chunk
+            
+            async def collect_stderr():
+                async for chunk in read_stream(process.stderr, "stderr"):
+                    stderr_lines.append(chunk)
+                    yield chunk
+            
+            # Stream both outputs
+            async for chunk in self._merge_streams(collect_stdout(), collect_stderr()):
+                yield chunk
+            
+            # Wait for process to complete
+            await process.wait()
+            
+            # Send completion
+            yield json.dumps({
+                "type": "complete",
+                "exit_code": process.returncode,
+                "timestamp": datetime.datetime.now().isoformat()
+            }) + "\n"
+            
+        except Exception as e:
+            yield json.dumps({
+                "type": "error",
+                "message": str(e)
+            }) + "\n"
+    
+    async def _merge_streams(self, *streams):
+        """Merge multiple async generators into one."""
+        queue = asyncio.Queue()
+        active = set()
+        
+        async def consume(stream, name):
+            try:
+                async for item in stream:
+                    await queue.put(item)
+            finally:
+                active.discard(name)
+                if not active:
+                    await queue.put(None)
+        
+        for i, stream in enumerate(streams):
+            name = f"stream_{i}"
+            active.add(name)
+            asyncio.create_task(consume(stream, name))
+        
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield item
+
     @staticmethod
     def _parse_output(raw_output: str) -> Any:
         """Parse CLI output, returning JSON when possible."""

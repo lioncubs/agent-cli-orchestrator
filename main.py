@@ -1,11 +1,12 @@
 """Main FastAPI application for agent-cli-orchestrator."""
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import os
+import asyncio
 
 from config_loader import config
 from git_operations import GitOperations
@@ -95,9 +96,18 @@ async def root():
             "POST /worktree/create": "Create a new worktree",
             "POST /prompt": "Execute synchronous Copilot CLI prompt",
             "POST /prompt/async": "Execute asynchronous Copilot CLI prompt",
-            "GET /ui": "Web interface for testing"
+            "POST /prompt/stream": "Execute Copilot CLI prompt with real-time streaming output (SSE)",
+            "GET /ui": "Web interface for testing",
+            "GET /streaming-test": "Streaming output test page"
         }
     }
+
+
+@app.get("/streaming-test", response_class=HTMLResponse)
+async def streaming_test():
+    """Serve the streaming test page."""
+    with open("/workspaces/lioncubs/agent-cli-orchestrator/test_streaming.html", "r") as f:
+        return f.read()
 
 
 @app.get("/repos")
@@ -472,6 +482,37 @@ async def execute_prompt_async(request: PromptRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/prompt/stream")
+async def execute_prompt_streaming(request: PromptRequest):
+    """Execute a Copilot CLI prompt with real-time streaming output."""
+    
+    async def stream_generator():
+        """Generator that yields streaming output from Copilot CLI."""
+        try:
+            repo_path = resolve_repo_path(request.repo_name) if request.repo_name else None
+            
+            async for chunk in copilot_cli.execute_prompt_streaming(
+                prompt=request.prompt,
+                options=request.options,
+                cwd=repo_path
+            ):
+                yield f"data: {chunk}\n\n"
+            
+        except Exception as e:
+            import json
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
 @app.get("/sessions")
 async def list_sessions():
     """List active Copilot CLI sessions."""
@@ -699,6 +740,44 @@ async def web_interface():
                 color: #27ae60;
             }
             
+            .stream-line {
+                margin: 2px 0;
+                line-height: 1.4;
+            }
+            
+            .stream-stdout {
+                color: #2c3e50;
+            }
+            
+            .stream-stderr {
+                color: #e74c3c;
+                font-weight: 500;
+            }
+            
+            .stream-start {
+                color: #27ae60;
+                font-weight: bold;
+                border-bottom: 1px solid #27ae60;
+                padding-bottom: 5px;
+                margin-bottom: 5px;
+            }
+            
+            .stream-complete {
+                color: #27ae60;
+                font-weight: bold;
+                border-top: 1px solid #27ae60;
+                padding-top: 5px;
+                margin-top: 5px;
+            }
+            
+            .stream-error {
+                color: #e74c3c;
+                font-weight: bold;
+                background: #fee;
+                padding: 5px;
+                border-radius: 4px;
+            }
+            
             .info-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -762,6 +841,7 @@ async def web_interface():
                     <div class="button-group">
                         <button onclick="executePrompt(false)">Execute Synchronous</button>
                         <button onclick="executePrompt(true)">Execute Async</button>
+                        <button onclick="executePromptStreaming()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">🔴 Execute with Live Streaming</button>
                     </div>
                     <div id="promptOutput" class="output" style="display: none;"></div>
                 </div>
@@ -883,6 +963,114 @@ async def web_interface():
                 } catch (error) {
                     output.innerHTML = '<p class="error">✗ Error: ' + error.message + '</p>';
                 }
+            }
+            
+            async function executePromptStreaming() {
+                const prompt = document.getElementById('promptInput').value.trim();
+                const sessionId = document.getElementById('sessionId').value.trim();
+                const output = document.getElementById('promptOutput');
+                
+                if (!prompt) {
+                    alert('Please enter a prompt');
+                    return;
+                }
+                
+                output.style.display = 'block';
+                output.innerHTML = '<div class="stream-start">🔴 Streaming output - live...</div>';
+                
+                try {
+                    const requestBody = { prompt: prompt };
+                    
+                    if (sessionId) {
+                        requestBody.options = { session_id: sessionId };
+                    }
+                    
+                    const response = await fetch('/prompt/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    
+                    while (true) {
+                        const {done, value} = await reader.read();
+                        if (done) break;
+                        
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.substring(6).trim();
+                                if (data) {
+                                    try {
+                                        const event = JSON.parse(data);
+                                        handleStreamEvent(event, output);
+                                    } catch (e) {
+                                        console.error('Failed to parse event:', data);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    output.innerHTML += '<div class="stream-error">✗ Error: ' + error.message + '</div>';
+                }
+            }
+            
+            function handleStreamEvent(event, output) {
+                let lineDiv = document.createElement('div');
+                lineDiv.className = 'stream-line';
+                
+                switch (event.type) {
+                    case 'start':
+                        lineDiv.className += ' stream-start';
+                        lineDiv.textContent = `Command: ${event.command}`;
+                        output.appendChild(lineDiv);
+                        
+                        let cwdDiv = document.createElement('div');
+                        cwdDiv.className = 'stream-line stream-start';
+                        cwdDiv.textContent = `Working directory: ${event.cwd}`;
+                        output.appendChild(cwdDiv);
+                        break;
+                    
+                    case 'stdout':
+                        lineDiv.className += ' stream-stdout';
+                        lineDiv.textContent = event.data;
+                        output.appendChild(lineDiv);
+                        break;
+                    
+                    case 'stderr':
+                        lineDiv.className += ' stream-stderr';
+                        lineDiv.textContent = `[stderr] ${event.data}`;
+                        output.appendChild(lineDiv);
+                        break;
+                    
+                    case 'complete':
+                        lineDiv.className += ' stream-complete';
+                        const status = event.exit_code === 0 ? '✓ Completed successfully' : `⚠ Exited with code ${event.exit_code}`;
+                        lineDiv.textContent = status;
+                        output.appendChild(lineDiv);
+                        break;
+                    
+                    case 'error':
+                        lineDiv.className += ' stream-error';
+                        lineDiv.textContent = `ERROR: ${event.message}`;
+                        output.appendChild(lineDiv);
+                        break;
+                }
+                
+                // Auto-scroll to bottom
+                output.scrollTop = output.scrollHeight;
             }
             
             async function switchBranch() {

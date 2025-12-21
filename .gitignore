@@ -51,3 +51,4 @@ worktrees/
 
 # Config overrides
 config.local.yaml
+MagicMock/
