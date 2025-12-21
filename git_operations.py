@@ -2,7 +2,7 @@
 
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 
 class GitOperations:
@@ -89,7 +89,7 @@ class GitOperations:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to create worktree: {e.stderr}")
     
-    def list_branches(self) -> List[Dict[str, str]]:
+    def list_branches(self) -> List[Dict[str, Union[str, bool]]]:
         """List all Git branches (both local and remote)."""
         try:
             # Get local branches

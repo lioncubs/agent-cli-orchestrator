@@ -227,10 +227,14 @@ class CopilotCLI:
                 try:
                     # Parse JSON output
                     sessions = json.loads(result.stdout)
+                    # Ensure sessions is a list
+                    if not isinstance(sessions, list):
+                        # If single session object, wrap in list
+                        sessions = [sessions] if sessions else []
                     return {
                         "status": "success",
-                        "sessions": sessions if isinstance(sessions, list) else [sessions],
-                        "count": len(sessions) if isinstance(sessions, list) else 1
+                        "sessions": sessions,
+                        "count": len(sessions)
                     }
                 except json.JSONDecodeError:
                     # If not valid JSON, parse line by line
