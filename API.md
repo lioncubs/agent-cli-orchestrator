@@ -180,7 +180,8 @@ Execute a synchronous Copilot CLI prompt.
   "prompt": "How do I create a Python function to reverse a string?",
   "options": {
     "branch": "main",
-    "worktree": "./worktrees/feature"
+    "worktree": "./worktrees/feature",
+    "session_id": "abc123-session-id"
   }
 }
 ```
@@ -189,7 +190,8 @@ Execute a synchronous Copilot CLI prompt.
 - `prompt` (string, required): The prompt to send to Copilot CLI
 - `options` (object, optional): Additional options
   - `branch` (string, optional): Specify a Git branch context
-  - `worktree` (string, optional): Specify a Git worktree context
+  - `worktree` (string, optional): Specify a Git worktree for Copilot's background agent
+  - `session_id` (string, optional): Continue an existing Copilot agent session
 
 **Response (Success):**
 ```json
@@ -232,6 +234,8 @@ Execute an asynchronous Copilot CLI prompt.
 **Request/Response:** Same as `/prompt` endpoint, but runs asynchronously.
 
 This endpoint is useful for long-running prompts that may take significant time to process.
+
+**Supported options:** `branch`, `worktree`, `session_id` (same as `/prompt` endpoint)
 
 ---
 

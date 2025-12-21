@@ -151,7 +151,7 @@ class TestCopilotCLI:
     @patch('copilot_cli.subprocess.run')
     @patch('copilot_cli.CopilotCLI._validate_cli_available')
     def test_execute_prompt_with_options(self, mock_validate, mock_run):
-        """Test execute prompt with branch and worktree options."""
+        """Test execute prompt with branch, worktree, and session_id options."""
         mock_validate.return_value = True
         mock_run.return_value = Mock(
             returncode=0,
@@ -162,7 +162,7 @@ class TestCopilotCLI:
         cli = CopilotCLI()
         result = cli.execute_prompt(
             "test prompt",
-            options={"branch": "main", "worktree": "./worktrees/test"}
+            options={"branch": "main", "worktree": "./worktrees/test", "session_id": "abc123"}
         )
         
         assert result["status"] == "success"
@@ -170,6 +170,8 @@ class TestCopilotCLI:
         call_args = mock_run.call_args[0][0]
         assert '--branch' in call_args
         assert '--worktree' in call_args
+        assert '--session' in call_args
+        assert 'abc123' in call_args
     
     @patch('copilot_cli.asyncio.create_subprocess_exec')
     @patch('copilot_cli.CopilotCLI._validate_cli_available')

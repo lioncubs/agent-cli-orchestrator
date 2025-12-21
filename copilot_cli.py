@@ -28,7 +28,18 @@ class CopilotCLI:
             return False
     
     def execute_prompt(self, prompt: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Execute a synchronous prompt via Copilot CLI."""
+        """Execute a synchronous prompt via Copilot CLI.
+        
+        Args:
+            prompt: The prompt text to send to Copilot
+            options: Optional parameters including:
+                - branch: Git branch to use
+                - worktree: Worktree path for background agent
+                - session_id: Existing session ID to continue
+        
+        Returns:
+            Dict with status and response from Copilot CLI
+        """
         if not self.enabled:
             return {
                 "status": "error",
@@ -51,6 +62,8 @@ class CopilotCLI:
                     command.extend(['--branch', options['branch']])
                 if 'worktree' in options:
                     command.extend(['--worktree', options['worktree']])
+                if 'session_id' in options:
+                    command.extend(['--session', options['session_id']])
             
             # Execute command
             result = subprocess.run(
@@ -96,7 +109,18 @@ class CopilotCLI:
             }
     
     async def execute_prompt_async(self, prompt: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Execute an asynchronous prompt via Copilot CLI."""
+        """Execute an asynchronous prompt via Copilot CLI.
+        
+        Args:
+            prompt: The prompt text to send to Copilot
+            options: Optional parameters including:
+                - branch: Git branch to use
+                - worktree: Worktree path for background agent
+                - session_id: Existing session ID to continue
+        
+        Returns:
+            Dict with status and response from Copilot CLI
+        """
         if not self.enabled:
             return {
                 "status": "error",
@@ -119,6 +143,8 @@ class CopilotCLI:
                     command.extend(['--branch', options['branch']])
                 if 'worktree' in options:
                     command.extend(['--worktree', options['worktree']])
+                if 'session_id' in options:
+                    command.extend(['--session', options['session_id']])
             
             # Execute command asynchronously
             process = await asyncio.create_subprocess_exec(

@@ -261,7 +261,8 @@ gh copilot suggest "How do I list all files in a directory recursively?"
     "prompt": "How do I create a Python function to reverse a string?",
     "options": {
       "branch": "main",
-      "worktree": "./worktrees/feature"
+      "worktree": "./worktrees/feature",
+      "session_id": "abc123"
     }
   }
   Response: {
@@ -271,8 +272,14 @@ gh copilot suggest "How do I list all files in a directory recursively?"
   }
   ```
 
+  **Options parameters:**
+  - `branch` (optional): Git branch to use as context
+  - `worktree` (optional): Worktree path for Copilot's background agent execution
+  - `session_id` (optional): Continue an existing Copilot agent session
+
 - **POST `/prompt/async`** - Execute asynchronous Copilot CLI prompt
   - Same request/response format as `/prompt`
+  - Supports all the same options: `branch`, `worktree`, `session_id`
 
 ### Web Interface
 

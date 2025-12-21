@@ -364,6 +364,10 @@ async def web_interface():
                         <label for="promptInput">Enter your prompt:</label>
                         <textarea id="promptInput" placeholder="e.g., How do I create a Python function to reverse a string?"></textarea>
                     </div>
+                    <div class="form-group">
+                        <label for="sessionId">Session ID (optional - to continue existing session):</label>
+                        <input type="text" id="sessionId" placeholder="e.g., abc123-session-id">
+                    </div>
                     <div class="button-group">
                         <button onclick="executePrompt(false)">Execute Synchronous</button>
                         <button onclick="executePrompt(true)">Execute Async</button>
@@ -430,6 +434,7 @@ async def web_interface():
             
             async function executePrompt(isAsync) {
                 const prompt = document.getElementById('promptInput').value.trim();
+                const sessionId = document.getElementById('sessionId').value.trim();
                 const output = document.getElementById('promptOutput');
                 
                 if (!prompt) {
@@ -442,12 +447,19 @@ async def web_interface():
                 
                 try {
                     const endpoint = isAsync ? '/prompt/async' : '/prompt';
+                    const requestBody = { prompt: prompt };
+                    
+                    // Add session_id to options if provided
+                    if (sessionId) {
+                        requestBody.options = { session_id: sessionId };
+                    }
+                    
                     const response = await fetch(endpoint, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ prompt: prompt })
+                        body: JSON.stringify(requestBody)
                     });
                     
                     const data = await response.json();

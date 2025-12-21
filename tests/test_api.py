@@ -237,7 +237,7 @@ class TestAPIEndpoints:
         assert "output" in data
     
     def test_execute_prompt_with_options(self, client, mock_copilot_cli):
-        """Test POST /prompt with branch and worktree options."""
+        """Test POST /prompt with branch, worktree, and session_id options."""
         mock_copilot_cli.execute_prompt.return_value = {
             "status": "success",
             "output": "response",
@@ -250,13 +250,17 @@ class TestAPIEndpoints:
                 "prompt": "test",
                 "options": {
                     "branch": "main",
-                    "worktree": "./worktrees/test"
+                    "worktree": "./worktrees/test",
+                    "session_id": "abc123"
                 }
             }
         )
         
         assert response.status_code == 200
+        # Verify options were passed
         mock_copilot_cli.execute_prompt.assert_called_once()
+        call_args = mock_copilot_cli.execute_prompt.call_args
+        assert call_args[1]['options']['session_id'] == 'abc123'
     
     def test_execute_prompt_cli_not_available(self, client, mock_copilot_cli):
         """Test POST /prompt when CLI is not available."""
