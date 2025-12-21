@@ -18,6 +18,125 @@ A multi-CLI orchestration system with GitHub Copilot CLI support. This project p
 - GitHub CLI (`gh`) with Copilot extension (for Copilot features)
 - Docker and Docker Compose (optional, for containerized deployment)
 
+## 📦 Installation
+
+### Step 1: Install Python 3.11+
+
+**macOS (using Homebrew):**
+```bash
+brew install python@3.11
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install python3.11 python3.11-venv python3-pip
+```
+
+**Windows:**
+Download from [python.org](https://www.python.org/downloads/) or use:
+```powershell
+winget install Python.Python.3.11
+```
+
+Verify installation:
+```bash
+python3 --version  # Should show 3.11 or higher
+```
+
+### Step 2: Install Git
+
+**macOS:**
+```bash
+brew install git
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install git
+```
+
+**Windows:**
+```bash
+winget install Git.Git
+```
+
+Verify installation:
+```bash
+git --version
+```
+
+### Step 3: Install GitHub CLI (gh)
+
+**macOS:**
+```bash
+brew install gh
+```
+
+**Ubuntu/Debian:**
+```bash
+# Add GitHub CLI repository
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+
+# Install
+sudo apt update
+sudo apt install gh
+```
+
+**Windows:**
+```bash
+winget install GitHub.cli
+```
+
+**Alternative (all platforms):**
+Download from [GitHub CLI Releases](https://github.com/cli/cli/releases)
+
+Verify installation:
+```bash
+gh --version
+```
+
+### Step 4: Authenticate GitHub CLI
+
+```bash
+gh auth login
+```
+
+Follow the interactive prompts:
+1. Choose "GitHub.com"
+2. Choose "HTTPS" (recommended) or "SSH"
+3. Choose "Login with a web browser"
+4. Copy the one-time code and press Enter
+5. Complete authentication in your browser
+
+Verify authentication:
+```bash
+gh auth status
+```
+
+### Step 5: Install GitHub Copilot CLI Extension
+
+```bash
+gh extension install github/gh-copilot
+```
+
+Verify installation:
+```bash
+gh copilot --version
+```
+
+**Note:** You need an active GitHub Copilot subscription to use the CLI. Sign up at [github.com/features/copilot](https://github.com/features/copilot)
+
+### Step 6: Test Copilot CLI (Optional)
+
+Test the CLI directly before using the orchestrator:
+```bash
+gh copilot suggest "How do I list all files in a directory recursively?"
+```
+
 ## 🚀 Quick Start
 
 ### Local Development
@@ -189,7 +308,60 @@ The `config.yaml` file contains all configurable settings:
 
 ## 🧪 Testing
 
-### Manual Testing via Web Interface
+### Sample Copilot CLI Prompts
+
+Here are some example prompts that should work with the Copilot CLI integration:
+
+**General Programming Questions:**
+```json
+{
+  "prompt": "How do I reverse a string in Python?"
+}
+```
+
+**Code Generation:**
+```json
+{
+  "prompt": "Write a Python function that reads a CSV file and returns a list of dictionaries"
+}
+```
+
+**Debugging Help:**
+```json
+{
+  "prompt": "Explain why I'm getting a 'KeyError' in Python and how to fix it"
+}
+```
+
+**Best Practices:**
+```json
+{
+  "prompt": "What are best practices for error handling in Python?"
+}
+```
+
+**Git Commands:**
+```json
+{
+  "prompt": "How do I merge a branch and resolve conflicts in Git?"
+}
+```
+
+**Docker Questions:**
+```json
+{
+  "prompt": "How do I create a multi-stage Dockerfile for a Python application?"
+}
+```
+
+**Testing Questions:**
+```json
+{
+  "prompt": "How do I write unit tests for a FastAPI endpoint using pytest?"
+}
+```
+
+### Testing via Web Interface
 
 1. Navigate to http://localhost:8000/ui
 2. Test repository information retrieval
