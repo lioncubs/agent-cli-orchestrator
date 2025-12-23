@@ -12,7 +12,10 @@ repositories:
   
 # Server configuration
 server:
-  host: "0.0.0.0"
+  # SECURITY: Use 127.0.0.1 for local development only
+  # For production or network access, use 0.0.0.0 with proper authentication
+  # See API.md for security recommendations
+  host: "127.0.0.1"
   port: 8000
   
 # Copilot CLI configuration

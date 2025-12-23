@@ -161,7 +161,9 @@ gh copilot suggest "How do I list all files in a directory recursively?"
      default_branch: "main"
    
    server:
-     host: "0.0.0.0"
+     # Use 127.0.0.1 for local development (recommended)
+     # Use 0.0.0.0 only in secure environments with authentication
+     host: "127.0.0.1"
      port: 8000
    
    copilot:
@@ -171,6 +173,8 @@ gh copilot suggest "How do I list all files in a directory recursively?"
    worktrees:
      base_path: "./worktrees"
    ```
+
+   > ⚠️ **Security Note**: The default configuration binds to `127.0.0.1` (localhost only) for security. If you need to expose the API on your network, change `host` to `0.0.0.0` and implement proper authentication (see [API.md](API.md) for details).
 
 4. **Run the server**
    ```bash
@@ -307,11 +311,53 @@ The `config.yaml` file contains all configurable settings:
 
 - **repository.name** - Repository identifier
 - **repository.default_branch** - Default branch name
-- **server.host** - Server host address (default: 0.0.0.0)
+- **server.host** - Server host address (default: 127.0.0.1 for localhost-only access)
 - **server.port** - Server port (default: 8000)
 - **copilot.enabled** - Enable/disable Copilot CLI features
 - **copilot.timeout** - Timeout for Copilot CLI commands (seconds)
 - **worktrees.base_path** - Base directory for worktrees
+
+> ⚠️ **Security**: By default, the server binds to `127.0.0.1` (localhost only). To expose on a network, set `server.host` to `0.0.0.0` but **only** in combination with proper authentication and network security controls. See the [Security](#-security) section below.
+
+## 🔒 Security
+
+**⚠️ IMPORTANT: This application currently has NO authentication by default.**
+
+### Development vs Production
+
+#### Development (Default - Localhost Only)
+The default configuration (`server.host: 127.0.0.1`) binds the API to localhost only, which is safe for development on your local machine.
+
+#### Production or Network Access
+**DO NOT** bind to `0.0.0.0` or expose this service on a network without implementing proper security measures:
+
+**Required Security Measures:**
+1. **Authentication**: Implement API key authentication, JWT tokens, or OAuth 2.0
+2. **HTTPS/TLS**: Use a reverse proxy (nginx, Apache) with SSL/TLS certificates
+3. **Rate Limiting**: Prevent abuse with request rate limiting
+4. **Network Controls**: Use firewall rules, VPN, or IP whitelisting
+5. **Input Validation**: Already implemented, but always verify
+
+**Why This Matters:**
+Without authentication, anyone with network access can:
+- Execute arbitrary Copilot CLI prompts (potential data exfiltration)
+- Switch Git branches in your repository
+- Create or modify Git worktrees
+- Access repository information
+
+### Recommended Production Setup
+
+```yaml
+# config.yaml for production with reverse proxy
+server:
+  host: "127.0.0.1"  # Keep localhost, use reverse proxy
+  port: 8000
+
+# nginx reverse proxy with SSL/TLS and authentication
+# See API.md for detailed production deployment guide
+```
+
+For detailed security recommendations and authentication implementation examples, see [API.md](API.md#authentication).
 
 ## 🧪 Testing
 
