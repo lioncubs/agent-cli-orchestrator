@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-12-23T17:17:53.016652",
+  "type": "copilot_execute",
+  "prompt": "test prompt",
+  "options": {
+    "session_id": "abc123"
+  },
+  "command": [
+    "copilot",
+    "-p",
+    "test prompt",
+    "--silent",
+    "--allow-all-tools",
+    "--resume",
+    "abc123"
+  ],
+  "cwd": null,
+  "exit_code": 0,
+  "stdout": "{\"result\": \"ok\"}",
+  "stderr": ""
+}

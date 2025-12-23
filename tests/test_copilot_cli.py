@@ -1,7 +1,6 @@
 """Tests for copilot_cli module."""
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import Mock, patch, AsyncMock
 import subprocess
 import asyncio
 import json

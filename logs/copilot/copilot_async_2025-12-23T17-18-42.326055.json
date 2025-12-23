@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-12-23T17:18:42.326055",
+  "type": "copilot_execute_async",
+  "prompt": "test prompt",
+  "options": null,
+  "command": [
+    "copilot",
+    "-p",
+    "test prompt",
+    "--silent",
+    "--allow-all-tools"
+  ],
+  "cwd": null,
+  "exit_code": 0,
+  "stdout": "{\"result\": \"async test\"}",
+  "stderr": ""
+}

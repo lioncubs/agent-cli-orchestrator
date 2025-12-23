@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-12-23T17:17:12.089881",
+  "type": "copilot_execute",
+  "prompt": "test prompt",
+  "options": null,
+  "command": [
+    "copilot",
+    "-p",
+    "test prompt",
+    "--silent",
+    "--allow-all-tools"
+  ],
+  "cwd": null,
+  "exit_code": 0,
+  "stdout": "{\"response\": \"test answer\"}",
+  "stderr": ""
+}

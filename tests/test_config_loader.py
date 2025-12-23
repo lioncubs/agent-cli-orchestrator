@@ -3,7 +3,6 @@
 import pytest
 import os
 import tempfile
-from pathlib import Path
 from config_loader import Config
 
 

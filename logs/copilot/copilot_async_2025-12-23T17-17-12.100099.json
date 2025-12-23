@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-12-23T17:17:12.100099",
+  "type": "copilot_execute_async",
+  "prompt": "test prompt",
+  "options": null,
+  "command": [
+    "copilot",
+    "-p",
+    "test prompt",
+    "--silent",
+    "--allow-all-tools"
+  ],
+  "cwd": null,
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Error occurred"
+}

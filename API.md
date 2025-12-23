@@ -146,9 +146,6 @@ List all Git branches (both local and remote).
 - `500 Internal Server Error`: Failed to list branches
 
 ---
-- `500 Internal Server Error`: Git operation failed
-
----
 
 ### Worktree Management
 
