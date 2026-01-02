@@ -1,6 +1,6 @@
 """Simple in-memory activity log for API actions."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 
@@ -29,7 +29,7 @@ class ActivityLog:
             Newly created log entry.
         """
         entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
             "action": action,
             "status": status,
             "payload": payload or {},
