@@ -1,8 +1,7 @@
 """Main FastAPI application for agent-cli-orchestrator."""
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import os

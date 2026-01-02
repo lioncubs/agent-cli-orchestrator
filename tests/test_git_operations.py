@@ -1,7 +1,7 @@
 """Tests for git_operations module."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import subprocess
 from git_operations import GitOperations
 

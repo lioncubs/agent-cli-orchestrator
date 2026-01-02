@@ -146,9 +146,6 @@ List all Git branches (both local and remote).
 - `500 Internal Server Error`: Failed to list branches
 
 ---
-- `500 Internal Server Error`: Git operation failed
-
----
 
 ### Worktree Management
 
@@ -497,11 +494,94 @@ These interfaces allow you to:
 
 ## Authentication
 
-Currently, the API does not require authentication. In production environments, you should implement:
-- API key authentication
-- OAuth 2.0
-- JWT tokens
-- Rate limiting
+**⚠️ CRITICAL SECURITY WARNING**
+
+**This API currently has NO authentication by default.** Running without authentication is **ONLY acceptable** in a strictly trusted, localhost-only development environment.
+
+### Security Risk
+
+Without authentication, **anyone** with network access to the API can:
+- Execute arbitrary prompts via Copilot CLI (potential data exfiltration)
+- Switch Git branches in your repository
+- Create or modify Git worktrees  
+- Access repository information and metadata
+- Trigger potentially expensive or long-running operations
+
+### Default Configuration (Safe for Development)
+
+The default `config.yaml` binds the server to `127.0.0.1` (localhost only), which restricts access to your local machine:
+
+```yaml
+server:
+  host: "127.0.0.1"  # Localhost only - safe for development
+  port: 8000
+```
+
+### Production Requirements
+
+**Before** exposing this API on a network (setting `host: "0.0.0.0"` or deploying to production), you **MUST** implement:
+
+#### Required Security Measures
+
+1. **Authentication** - Choose at least one:
+   - **API Key**: Add `X-API-Key` header validation
+   - **JWT Tokens**: Implement `Authorization: Bearer <token>` header validation
+   - **OAuth 2.0**: For user-based access control
+
+2. **HTTPS/TLS** - Use a reverse proxy with SSL certificates:
+   ```nginx
+   # nginx example
+   server {
+       listen 443 ssl;
+       ssl_certificate /path/to/cert.pem;
+       ssl_certificate_key /path/to/key.pem;
+       
+       location / {
+           proxy_pass http://127.0.0.1:8000;
+       }
+   }
+   ```
+
+3. **Rate Limiting** - Prevent abuse and DoS attacks
+
+4. **Network Controls** - Implement at least one:
+   - Firewall rules restricting source IPs
+   - VPN requirement for API access
+   - IP whitelisting
+
+#### Example: API Key Authentication
+
+Here's a minimal example of adding API key authentication to the FastAPI app:
+
+```python
+from fastapi import FastAPI, Header, HTTPException
+from typing import Optional
+
+API_KEY = "your-secret-api-key"  # Use environment variable in production
+
+async def verify_api_key(x_api_key: Optional[str] = Header(None)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+app = FastAPI(dependencies=[Depends(verify_api_key)])  # Apply globally
+```
+
+**Usage with authentication:**
+```bash
+curl -H "X-API-Key: your-secret-api-key" http://localhost:8000/repo
+```
+
+### Additional Recommendations
+
+- **Audit Logging**: Log all API requests with timestamps and source IPs
+- **Input Validation**: Already implemented, but review for your use case
+- **Least Privilege**: Run the service with minimal system permissions
+- **Regular Updates**: Keep all dependencies up to date
+- **Security Monitoring**: Monitor for suspicious activity
+
+### Network Exposure Warning
+
+**DO NOT** set `server.host: "0.0.0.0"` without implementing the security measures above. If the server is accessible via Docker port mapping or cloud deployment, the same security requirements apply.
 
 ---
 
