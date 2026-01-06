@@ -1,0 +1,108 @@
+%% Context Injection
+%% Shows how conversation history is injected into prompts for multi-turn sessions
+
+sequenceDiagram
+    actor User
+    participant UI as Client/UI
+    participant API as API Endpoint
+    participant SessionMgr as Session Manager
+    participant ContextMgr as Context Manager
+    participant Storage as Session Storage
+    participant Copilot as Copilot CLI
+    
+    rect rgb(239, 246, 255)
+        Note over User,SessionMgr: Initial Request - New Session
+        User->>UI: First Query/Prompt
+        UI->>API: POST /query<br/>(no session_id)
+        API->>SessionMgr: create_session()
+        SessionMgr->>Storage: Store new session
+        Storage-->>SessionMgr: session_id
+        SessionMgr-->>API: Session created
+    end
+    
+    rect rgb(220, 252, 231)
+        Note over API,Copilot: Execute First Turn
+        API->>Copilot: execute(prompt)<br/>No context needed
+        Copilot-->>API: Response 1
+        
+        API->>SessionMgr: save_turn()
+        SessionMgr->>Storage: Store Turn 1<br/>{role: user, content: prompt}<br/>{role: assistant, content: response}
+        Storage-->>SessionMgr: Saved
+    end
+    
+    API-->>UI: Response + session_id
+    UI-->>User: Display Response 1
+    
+    rect rgb(243, 232, 255)
+        Note over User,ContextMgr: Follow-up Request - Context Injection
+        User->>UI: Follow-up Question
+        UI->>API: POST /query<br/>(with session_id)
+        API->>SessionMgr: get_session(session_id)
+        SessionMgr->>Storage: Load session
+        Storage-->>SessionMgr: Session + conversation history
+        SessionMgr-->>API: Session object
+        
+        API->>ContextMgr: build_context_prompt(session, new_prompt)
+        ContextMgr->>ContextMgr: Load conversation turns
+        ContextMgr->>ContextMgr: Apply truncation rules<br/>(max 5 turns or 4000 tokens)
+        
+        alt History Fits in Context Window
+            ContextMgr->>ContextMgr: Include all turns
+        else History Too Large
+            ContextMgr->>ContextMgr: Keep most recent turns
+            ContextMgr->>ContextMgr: Add summary of older turns
+        end
+        
+        ContextMgr->>ContextMgr: Format context prompt:<br/>Previous Context:<br/>Turn 1 - User: ...<br/>Turn 1 - Assistant: ...<br/>Turn 2 - User: ...<br/>Turn 2 - Assistant: ...<br/><br/>Current Request:<br/>User: {new_prompt}
+        
+        ContextMgr-->>API: Contextual prompt
+    end
+    
+    rect rgb(220, 252, 231)
+        Note over API,Copilot: Execute with Context
+        API->>Copilot: execute(contextual_prompt)
+        Note over Copilot: Copilot sees full<br/>conversation history
+        Copilot-->>API: Contextual Response
+        
+        API->>SessionMgr: save_turn()
+        SessionMgr->>Storage: Store Turn 2<br/>{role: user, content: new_prompt}<br/>{role: assistant, content: response}
+        Storage-->>SessionMgr: Saved
+    end
+    
+    API-->>UI: Contextual Response
+    UI-->>User: Display Response 2
+    
+    rect rgb(255, 237, 213)
+        Note over User,Storage: Third Turn - Continued Context
+        User->>UI: Another Follow-up
+        UI->>API: POST /query (session_id)
+        API->>ContextMgr: build_context_prompt(session, prompt_3)
+        
+        ContextMgr->>Storage: Load all turns
+        Storage-->>ContextMgr: Turns 1-2
+        
+        ContextMgr->>ContextMgr: Build context:<br/>Turn 1: Q&A<br/>Turn 2: Q&A<br/>Turn 3: New question
+        
+        ContextMgr-->>API: Context with 3 turns
+        API->>Copilot: execute(full_context)
+        Copilot-->>API: Response aware of all history
+        
+        API->>Storage: Store Turn 3
+    end
+    
+    rect rgb(254, 243, 199)
+        Note over ContextMgr,Storage: Context Window Management
+        
+        alt Turn Count > 5
+            ContextMgr->>ContextMgr: Summarize turns 1-N-5
+            ContextMgr->>ContextMgr: Keep last 5 turns full
+            ContextMgr->>ContextMgr: Prepend summary
+        end
+        
+        alt Token Count > 4000
+            ContextMgr->>ContextMgr: Truncate older turns
+            ContextMgr->>ContextMgr: Preserve recent context
+        end
+        
+        Note over ContextMgr: Ensures context stays<br/>within Copilot limits
+    end

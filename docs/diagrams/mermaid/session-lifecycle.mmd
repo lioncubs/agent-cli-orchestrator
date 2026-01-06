@@ -1,0 +1,77 @@
+%% Session Lifecycle
+%% Shows the lifecycle states for Query, Research, and Delegation session types
+
+stateDiagram-v2
+    [*] --> Created: Create Session
+    
+    Created --> Active: Start Session
+    
+    state Active {
+        [*] --> QueryMode: Type = QUERY
+        [*] --> ResearchMode: Type = RESEARCH
+        [*] --> DelegationMode: Type = DELEGATION
+        
+        state QueryMode {
+            [*] --> ExecutingQuery
+            ExecutingQuery --> AwaitingResponse
+            AwaitingResponse --> ResponseReceived
+            ResponseReceived --> [*]
+        }
+        
+        state ResearchMode {
+            [*] --> CreatingTempWorktree
+            CreatingTempWorktree --> ExecutingResearch
+            ExecutingResearch --> AwaitingResearchResponse
+            AwaitingResearchResponse --> SavingArtifacts
+            SavingArtifacts --> CleaningUpWorktree
+            CleaningUpWorktree --> [*]
+        }
+        
+        state DelegationMode {
+            [*] --> CreatingBranch
+            CreatingBranch --> CreatingWorktree
+            CreatingWorktree --> ExecutingDelegation
+            ExecutingDelegation --> AwaitingDelegationResponse
+            AwaitingDelegationResponse --> ReviewingChanges
+            ReviewingChanges --> CommittingChanges
+            CommittingChanges --> [*]
+            
+            ReviewingChanges --> ExecutingDelegation: Continue Session
+        }
+    }
+    
+    Active --> Completed: Success
+    Active --> Failed: Error
+    Active --> Cancelled: User Cancel
+    
+    Completed --> PRCreated: Create PR<br/>(Delegation only)
+    Completed --> CleanedUp: Cleanup
+    
+    PRCreated --> Merged: PR Merged
+    PRCreated --> Abandoned: PR Rejected
+    
+    Failed --> CleanedUp: Cleanup
+    Cancelled --> CleanedUp: Cleanup
+    Merged --> CleanedUp: Cleanup
+    Abandoned --> CleanedUp: Cleanup
+    
+    CleanedUp --> [*]
+    
+    note right of QueryMode
+        No worktree
+        Direct repo access
+        Immediate cleanup
+    end note
+    
+    note right of ResearchMode
+        Temporary worktree
+        Detached HEAD
+        Auto cleanup on complete
+    end note
+    
+    note right of DelegationMode
+        Persistent worktree
+        Named branch
+        Cleanup after PR merge/abandon
+        GOLDEN RULE enforced
+    end note

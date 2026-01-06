@@ -1,0 +1,84 @@
+%% Delegation Flow
+%% Shows the complete delegation flow from creation to PR merge
+
+sequenceDiagram
+    actor User
+    participant API as FastAPI/MCP
+    participant DelService as Delegation Service
+    participant WtMgr as Worktree Manager
+    participant GitOps as Git Operations
+    participant Copilot as Copilot CLI
+    participant CommitMgr as Commit Manager
+    participant Platform as Platform Integration
+    
+    User->>API: Start Delegation<br/>(prompt, repo, branch)
+    API->>DelService: create_delegation()
+    
+    rect rgb(220, 252, 231)
+        Note over DelService,GitOps: GOLDEN RULE: Step 1 - Create Isolated Branch
+        DelService->>GitOps: Create branch from base
+        GitOps-->>DelService: Branch created
+    end
+    
+    rect rgb(220, 252, 231)
+        Note over DelService,WtMgr: GOLDEN RULE: Step 2 - Create Isolated Worktree
+        DelService->>WtMgr: create_delegation_worktree()
+        WtMgr->>GitOps: git worktree add
+        GitOps-->>WtMgr: Worktree path
+        WtMgr-->>DelService: Worktree created
+    end
+    
+    DelService->>API: Delegation ID + Status PENDING
+    API-->>User: Delegation created
+    
+    rect rgb(255, 237, 213)
+        Note over DelService,Copilot: GOLDEN RULE: Step 3 - Work in Worktree Only
+        DelService->>Copilot: execute_in_worktree(prompt)
+        Note over Copilot: Agent works in<br/>isolated worktree
+        Copilot-->>DelService: Changes made
+    end
+    
+    DelService->>User: Delegation RUNNING
+    
+    alt Changes Made
+        rect rgb(220, 252, 231)
+            Note over DelService,CommitMgr: GOLDEN RULE: Step 4 - Commit Changes
+            DelService->>CommitMgr: commit_delegation_changes()
+            CommitMgr->>GitOps: Get changed files
+            GitOps-->>CommitMgr: File list
+            CommitMgr->>GitOps: git commit<br/>(with user identity)
+            GitOps-->>CommitMgr: Commit SHA
+            CommitMgr-->>DelService: Committed
+        end
+        
+        DelService->>User: Delegation COMPLETED<br/>(commit SHA)
+        
+        User->>API: Create PR
+        rect rgb(219, 234, 254)
+            Note over API,Platform: GOLDEN RULE: Step 5 - PR for Review
+            API->>Platform: create_pull_request()
+            Platform-->>API: PR URL
+        end
+        API-->>User: PR created<br/>(requires human review)
+        
+        alt PR Merged
+            User->>Platform: Review & Merge PR
+            Platform-->>API: PR merged notification
+            API->>WtMgr: cleanup_worktree()
+            WtMgr->>GitOps: git worktree remove
+            GitOps-->>WtMgr: Cleanup complete
+        else PR Rejected
+            User->>Platform: Reject/Close PR
+            Platform-->>API: PR closed notification
+            API->>WtMgr: cleanup_worktree(delete_branch=true)
+            WtMgr->>GitOps: git worktree remove<br/>git branch -D
+            GitOps-->>WtMgr: Cleanup complete
+        end
+    else No Changes
+        DelService->>User: Delegation COMPLETED<br/>(no changes)
+        DelService->>WtMgr: cleanup_worktree()
+    end
+    
+    rect rgb(220, 252, 231)
+        Note over User,GitOps: GOLDEN RULE VERIFIED:<br/>✓ Isolated worktree created<br/>✓ Isolated branch created<br/>✓ Changes only in worktree<br/>✓ PR required for merge<br/>✓ Human review mandatory
+    end

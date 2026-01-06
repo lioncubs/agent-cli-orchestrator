@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"makefile.configureOnOpen": false,
+		"github.copilot.chat.cli.customAgents.enabled": true,
+		"github.copilot.chat.customAgents.showOrganizationAndEnterpriseAgents": true,
+		"terminal.integrated.fontFamily": "MesloLGS Nerd Font Mono, MesloLGS Nerd Font, MesloLGS NF, monospace",
+		"terminal.integrated.customGlyphs": true
+	}
+}
