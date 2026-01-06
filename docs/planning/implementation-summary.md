@@ -230,8 +230,8 @@ repositories:
 
 ## Files Created
 
-1. IMPLEMENTATION_GUIDE.md - Detailed implementation guide
-2. IMPLEMENTATION_SUMMARY.md - This file
+1. implementation-guide.md - Detailed implementation guide
+2. implementation-summary.md - This file
 3. update_get_endpoints.py - Script used for updates (can be deleted)
 4. update_post_endpoints.py - Script used for updates (can be deleted)
 5. update_main.py - Script used for updates (can be deleted)

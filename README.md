@@ -359,6 +359,34 @@ server:
 
 For detailed security recommendations and authentication implementation examples, see [API.md](API.md#authentication).
 
+## 📖 Documentation
+
+### Core Documentation
+- **[README.md](README.md)** - This file, project overview and getting started
+- **[API.md](API.md)** - Complete API reference and endpoint documentation
+- **[INSTALL.md](INSTALL.md)** - Detailed installation instructions
+- **[MULTI_REPO_FEATURES.md](MULTI_REPO_FEATURES.md)** - Multi-repository support guide
+- **[STREAMING.md](STREAMING.md)** - Server-Sent Events (SSE) streaming guide
+
+### Planning & Development
+The `docs/planning/` directory contains comprehensive planning documentation:
+
+- **[action-plan.md](docs/planning/action-plan.md)** - Detailed development roadmap with task breakdown
+- **[plan-summary.md](docs/planning/plan-summary.md)** - High-level project plan overview
+- **[security-hardening-addendum.md](docs/planning/security-hardening-addendum.md)** - Security hardening guide and checklist
+- **[completion-summary.md](docs/planning/completion-summary.md)** - Work completion summaries
+- **[coverage-improvement.md](docs/planning/coverage-improvement.md)** - Test coverage improvement plan
+- **[implementation-guide.md](docs/planning/implementation-guide.md)** - Implementation guidelines
+- **[implementation-summary.md](docs/planning/implementation-summary.md)** - Implementation notes
+- **[plan.md](docs/planning/plan.md)** - Original project plan
+- **[project-plan.md](docs/planning/project-plan.md)** - Comprehensive project planning
+- **[testing-plan.md](docs/planning/testing-plan.md)** - Testing strategy and plan
+
+### Architecture
+- **[docs/architecture.md](docs/architecture.md)** - System architecture and design decisions
+
+For a complete index of planning documentation, see [docs/planning/README.md](docs/planning/README.md).
+
 ## 🧪 Testing
 
 ### Sample Copilot CLI Prompts

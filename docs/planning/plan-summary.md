@@ -1,7 +1,7 @@
 # Project Plan Summary
 
 ## Overview
-This document provides a high-level summary of the development plan for the Agent CLI Orchestrator project. For detailed implementation steps, see [ACTION_PLAN.md](ACTION_PLAN.md).
+This document provides a high-level summary of the development plan for the Agent CLI Orchestrator project. For detailed implementation steps, see [action-plan.md](action-plan.md).
 
 ## Project Status: Phase 1 Complete ✅
 
@@ -64,7 +64,7 @@ The Agent CLI Orchestrator has successfully completed Phase 1 with a solid found
 
 ## Key Documents
 
-- **[ACTION_PLAN.md](ACTION_PLAN.md)** - Detailed task breakdown with timelines
+- **[action-plan.md](action-plan.md)** - Detailed task breakdown with timelines
 - **[docs/planning/project-plan.md](docs/planning/project-plan.md)** - Long-term strategic plan
 - **[docs/planning/testing-plan.md](docs/planning/testing-plan.md)** - Testing strategy and infrastructure
 - **[README.md](README.md)** - Installation and usage guide
@@ -105,7 +105,7 @@ python main.py
 4. **Code Review**: Review and refactor large functions
 
 ### Development Workflow
-1. Check [ACTION_PLAN.md](ACTION_PLAN.md) for available tasks
+1. Check [action-plan.md](action-plan.md) for available tasks
 2. Create feature branch from `main`
 3. Make changes with tests
 4. Ensure all tests pass: `pytest -v`
@@ -130,12 +130,12 @@ python main.py
 
 ### For Project Maintainers
 1. Review and approve this plan
-2. Prioritize tasks from ACTION_PLAN.md
+2. Prioritize tasks from action-plan.md
 3. Set up GitHub Actions (Task 4.1)
 4. Begin test coverage improvements (Tasks 1.2-1.4)
 
 ### For Contributors
-1. Read ACTION_PLAN.md for detailed tasks
+1. Read action-plan.md for detailed tasks
 2. Pick a task aligned with your skills
 3. Set up development environment
 4. Submit PRs with tests and documentation

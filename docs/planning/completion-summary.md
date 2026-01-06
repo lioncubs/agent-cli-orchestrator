@@ -8,7 +8,7 @@
 
 ### 1. Comprehensive Planning Documentation
 
-#### ACTION_PLAN.md (12,551 characters)
+#### action-plan.md (12,551 characters)
 A detailed, actionable roadmap covering:
 - **6 Development Phases** with clear objectives
 - **Task breakdown** with time estimates (30 min to 2 weeks per task)
@@ -26,7 +26,7 @@ Key Sections:
 - Phase 5: Feature Enhancements (LOW priority)
 - Phase 6: Production Readiness (Future)
 
-#### PLAN_SUMMARY.md (4,857 characters)
+#### plan-summary.md (4,857 characters)
 A high-level overview providing:
 - **Quick-start guide** for contributors
 - **Current project status** and metrics
@@ -85,9 +85,9 @@ Fixed deprecation warning in `activity_log.py`:
 
 #### Commits Made
 1. `c27e389` - Initial plan
-2. `d151e47` - Add comprehensive ACTION_PLAN.md with detailed roadmap
+2. `d151e47` - Add comprehensive action-plan.md with detailed roadmap
 3. `09d5b5c` - Fix datetime deprecation warning in activity_log.py
-4. `f95ae52` - Add PLAN_SUMMARY.md with high-level roadmap overview
+4. `f95ae52` - Add plan-summary.md with high-level roadmap overview
 
 #### Branch Status
 - Branch: `copilot/create-project-plan`
@@ -96,8 +96,8 @@ Fixed deprecation warning in `activity_log.py`:
 - Ready for PR/merge
 
 #### Files Changed
-- 📄 ACTION_PLAN.md (new, 475 lines)
-- 📄 PLAN_SUMMARY.md (new, 162 lines)
+- 📄 action-plan.md (new, 475 lines)
+- 📄 plan-summary.md (new, 162 lines)
 - 🔧 activity_log.py (2 lines changed)
 
 ## Quality Metrics
@@ -141,7 +141,7 @@ Fixed deprecation warning in `activity_log.py`:
 
 ### Immediate (This Week)
 1. ✅ Review and approve this planning work
-2. ⏳ Begin test coverage improvements (Tasks 1.2-1.4 in ACTION_PLAN.md)
+2. ⏳ Begin test coverage improvements (Tasks 1.2-1.4 in action-plan.md)
 3. ⏳ Update README and API.md with latest features
 4. ⏳ Create CHANGELOG.md to track versions
 
@@ -153,15 +153,15 @@ Fixed deprecation warning in `activity_log.py`:
 
 ### Planning
 1. ⏳ Schedule bi-weekly progress reviews
-2. ⏳ Assign tasks from ACTION_PLAN.md
+2. ⏳ Assign tasks from action-plan.md
 3. ⏳ Set up project board for task tracking
 4. ⏳ Define contribution process
 
 ## Success Criteria Met
 
 ✅ **Comprehensive Plan Created**
-- Detailed ACTION_PLAN.md with task breakdown
-- High-level PLAN_SUMMARY.md for quick reference
+- Detailed action-plan.md with task breakdown
+- High-level plan-summary.md for quick reference
 - Clear timeline and milestones
 
 ✅ **Current State Analyzed**
