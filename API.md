@@ -768,6 +768,228 @@ fetch('http://localhost:8000/prompt/async', {
 
 ---
 
+## Query and Research Operations
+
+### Quick Query Execution
+
+#### POST `/query`
+
+Execute read-only query operations on a repository.
+
+**Request Body:**
+```json
+{
+  "repo_name": "test-repo",
+  "operation": "read_file",
+  "parameters": {
+    "file_path": "src/main.py"
+  },
+  "user_id": "user123"
+}
+```
+
+**Supported Operations:**
+- `read_file`: Read file contents
+- `list_files`: List files in a directory
+- `search_code`: Search for code patterns
+- `get_branch`: Get current branch information
+- `list_branches`: List all branches
+
+**Response:**
+```json
+{
+  "status": "success",
+  "result": {
+    "file_path": "src/main.py",
+    "content": "# File contents here...",
+    "lines": 42,
+    "size": 1024
+  }
+}
+```
+
+---
+
+### Research Sessions
+
+#### POST `/query/sessions/{session_id}/complete`
+
+Complete a research session and generate a research artifact.
+
+**Path Parameters:**
+- `session_id` (UUID): The research session to complete
+
+**Request Body:**
+```json
+{
+  "summary": "Research completed successfully",
+  "findings": [
+    {
+      "file": "src/auth.py",
+      "lines": "45-67",
+      "note": "Authentication logic needs updating",
+      "code_snippet": "def authenticate(user):\n    ..."
+    }
+  ],
+  "recommendations": [
+    "Update authentication to use JWT",
+    "Add rate limiting"
+  ],
+  "suggested_delegation_prompt": "Implement JWT authentication",
+  "cleanup_worktree": true
+}
+```
+
+**Response:**
+```json
+{
+  "artifact": {
+    "research_id": "550e8400-e29b-41d4-a716-446655440000",
+    "repo_name": "test-repo",
+    "base_branch": "main",
+    "base_commit": "abc123",
+    "created_at": "2024-01-06T12:00:00Z",
+    "user_id": "user123",
+    "summary": "Research completed successfully",
+    "findings": [...],
+    "recommendations": [...],
+    "conversation": [...],
+    "suggested_delegation_prompt": "Implement JWT authentication",
+    "relevant_files": ["src/auth.py"]
+  },
+  "message": "Research session completed successfully"
+}
+```
+
+---
+
+### Research Artifacts
+
+#### GET `/query/research`
+
+List all research artifacts with optional filters.
+
+**Query Parameters:**
+- `repo_name` (optional): Filter by repository
+- `user_id` (optional): Filter by user
+- `limit` (optional): Maximum results (1-100)
+- `offset` (optional): Pagination offset
+
+**Response:**
+```json
+{
+  "artifacts": [
+    {
+      "research_id": "550e8400-e29b-41d4-a716-446655440000",
+      "repo_name": "test-repo",
+      "summary": "Authentication research",
+      "created_at": "2024-01-06T12:00:00Z",
+      ...
+    }
+  ],
+  "total": 10,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+---
+
+#### GET `/query/research/{research_id}`
+
+Get a specific research artifact by ID.
+
+**Path Parameters:**
+- `research_id` (UUID): The research artifact ID
+
+**Response:**
+```json
+{
+  "artifact": {
+    "research_id": "550e8400-e29b-41d4-a716-446655440000",
+    "repo_name": "test-repo",
+    "base_branch": "main",
+    "summary": "Research findings...",
+    "findings": [...],
+    "recommendations": [...],
+    ...
+  },
+  "message": "Success"
+}
+```
+
+---
+
+#### POST `/query/research/{research_id}/delegate`
+
+Create a delegation session from a research artifact.
+
+**Path Parameters:**
+- `research_id` (UUID): The research artifact ID
+
+**Request Body:**
+```json
+{
+  "user_id": "user456",
+  "custom_prompt": "Optional custom delegation prompt"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "session_id": "660e8400-e29b-41d4-a716-446655440000",
+  "research_id": "550e8400-e29b-41d4-a716-446655440000",
+  "message": "Delegation session created from research artifact"
+}
+```
+
+---
+
+#### DELETE `/query/research/{research_id}`
+
+Delete a research artifact.
+
+**Path Parameters:**
+- `research_id` (UUID): The research artifact ID to delete
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Research artifact deleted successfully"
+}
+```
+
+---
+
+## Tool Policy and Permissions
+
+The system enforces operation-level permissions based on session tiers:
+
+### Operation Tiers
+
+**Read-Only Tier:**
+- Allows: read_file, list_files, search_code, get_branch, list_branches
+- Denies: All write operations, worktree management, admin operations
+
+**Standard Tier:**
+- Allows: All read operations, write operations, worktree management
+- Denies: Admin operations (force push, delete branch, delete session)
+
+**Admin Tier:**
+- Allows: All operations including force push, branch deletion, session deletion
+
+### Setting Session Tier
+
+Session tiers are automatically assigned based on session type:
+- Query sessions → Read-Only tier
+- Research sessions → Standard tier
+- Delegation sessions → Standard tier
+
+---
+
 ## WebSocket Support (Future)
 
 WebSocket support for real-time updates is planned for future releases. This will enable:

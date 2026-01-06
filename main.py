@@ -19,6 +19,13 @@ from src.api.routes.sessions import router as sessions_router, init_session_rout
 from src.integrations.git import GitOperations as GitOpsIntegration
 from src.integrations.copilot import CopilotCLI
 
+# Import query and research components
+from src.api.routes.query import router as query_router, init_query_routes
+from src.query.service import QueryService
+from src.query.research_service import ResearchService
+from src.registry.research_store import ResearchStore
+from src.permissions.tool_policy import ToolPolicy
+
 
 # Pydantic models
 class PromptRequest(BaseModel):
@@ -93,9 +100,29 @@ session_manager = SessionManager(
     copilot_cli=copilot_cli_integration
 )
 
+# Initialize query and research components
+research_store = ResearchStore()
+query_service = QueryService()
+tool_policy = ToolPolicy()
+research_service = ResearchService(
+    research_store=research_store,
+    query_service=query_service,
+    tool_policy=tool_policy
+)
+
 # Initialize and include session routes
 init_session_routes(session_store, session_manager)
 app.include_router(sessions_router)
+
+# Initialize and include query routes
+init_query_routes(
+    query_service=query_service,
+    research_service=research_service,
+    session_manager=session_manager,
+    research_store=research_store,
+    tool_policy=tool_policy
+)
+app.include_router(query_router)
 
 
 @app.get("/")
@@ -127,6 +154,14 @@ async def root():
             "POST /sessions/{id}/continue": "Continue a session",
             "POST /sessions/{id}/complete": "Mark session as completed",
             "DELETE /sessions/{id}": "Delete or abandon a session"
+        },
+        "query_and_research": {
+            "POST /query": "Execute read-only query operations",
+            "POST /query/sessions/{id}/complete": "Complete research session and generate artifact",
+            "GET /query/research": "List research artifacts",
+            "GET /query/research/{id}": "Get specific research artifact",
+            "POST /query/research/{id}/delegate": "Create delegation from research artifact",
+            "DELETE /query/research/{id}": "Delete research artifact"
         }
     }
 
