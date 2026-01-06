@@ -65,10 +65,10 @@ The Agent CLI Orchestrator has successfully completed Phase 1 with a solid found
 ## Key Documents
 
 - **[action-plan.md](action-plan.md)** - Detailed task breakdown with timelines
-- **[docs/planning/project-plan.md](docs/planning/project-plan.md)** - Long-term strategic plan
-- **[docs/planning/testing-plan.md](docs/planning/testing-plan.md)** - Testing strategy and infrastructure
-- **[README.md](README.md)** - Installation and usage guide
-- **[API.md](API.md)** - API endpoint documentation
+- **[project-plan.md](project-plan.md)** - Long-term strategic plan
+- **[testing-plan.md](testing-plan.md)** - Testing strategy and infrastructure
+- **[../../README.md](../../README.md)** - Installation and usage guide
+- **[../../API.md](../../API.md)** - API endpoint documentation
 
 ## Quick Start for Contributors
 
