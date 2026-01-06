@@ -43,6 +43,9 @@ class ToolPolicy:
     Enforce operation restrictions based on session type and user permissions.
     
     Implements strict limits for read-only tiers and guards admin operations.
+    
+    Note: Session tier mappings are stored in memory and will be lost on restart.
+    For production use, consider implementing persistent storage for session tiers.
     """
     
     # Define read-only operations

@@ -12,6 +12,9 @@ class ResearchStore:
     Persistent store for research artifacts.
     
     Provides CRUD operations and filtering capabilities for research results.
+    
+    Note: Currently uses in-memory storage which will lose data on restart.
+    For production use, consider implementing persistent storage (e.g., database).
     """
     
     def __init__(self):

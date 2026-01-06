@@ -149,8 +149,8 @@ async def execute_query(request: QueryRequest):
         operation = request.operation
         params = request.parameters
         
-        # Add repo_path to parameters (would need to resolve from repo_name)
-        # For now, using repo_name as path (would be resolved in production)
+        # TODO: Implement proper repository name to path resolution
+        # For now, using repo_name as path (should be resolved via config in production)
         params["repo_path"] = request.repo_name
         
         if operation == "read_file":
@@ -215,6 +215,7 @@ async def complete_research_session(
             )
         
         # Finalize the research
+        # TODO: Implement proper repository name to path resolution
         result = research_service.finalize_research_session(
             session=session,
             summary=request.summary,
@@ -222,7 +223,7 @@ async def complete_research_session(
             recommendations=request.recommendations,
             suggested_delegation_prompt=request.suggested_delegation_prompt,
             cleanup_worktree=request.cleanup_worktree,
-            repo_path=session.repo_name  # Would be resolved in production
+            repo_path=session.repo_name  # Should be resolved via config in production
         )
         
         if result.get("status") == "error":

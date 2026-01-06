@@ -197,22 +197,22 @@ class QueryService:
             )
             
             matches = []
-            if result.stdout:
-                for line in result.stdout.splitlines()[:max_results]:
-                    parts = line.split(':', 2)
-                    if len(parts) >= 3:
-                        matches.append({
-                            "file": parts[0],
-                            "line": int(parts[1]),
-                            "content": parts[2].strip()
-                        })
+            output_lines = result.stdout.splitlines()
+            for line in output_lines[:max_results]:
+                parts = line.split(':', 2)
+                if len(parts) >= 3:
+                    matches.append({
+                        "file": parts[0],
+                        "line": int(parts[1]),
+                        "content": parts[2].strip()
+                    })
             
             return {
                 "status": "success",
                 "pattern": pattern,
                 "matches": matches,
                 "total_matches": len(matches),
-                "truncated": len(result.stdout.splitlines()) > max_results
+                "truncated": len(output_lines) > max_results
             }
         except subprocess.CalledProcessError as e:
             # git grep returns 1 when no matches found
