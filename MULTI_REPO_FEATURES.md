@@ -327,7 +327,7 @@ If no repository is marked as default and no `repo_name` is provided:
 
 ## See Also
 
-- [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - Detailed implementation notes
-- [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) - Step-by-step implementation guide
+- [docs/planning/project-plan/implementation-summary.md](docs/planning/project-plan/implementation-summary.md) - Detailed implementation notes
+- [docs/planning/project-plan/implementation-guide.md](docs/planning/project-plan/implementation-guide.md) - Step-by-step implementation guide
 - [API.md](API.md) - Complete API documentation
 - [README.md](README.md) - Main project documentation
