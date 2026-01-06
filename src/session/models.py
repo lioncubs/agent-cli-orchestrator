@@ -42,6 +42,16 @@ class Turn(BaseModel):
     timestamp: datetime
 
 
+class TurnSummary(BaseModel):
+    """Summarized version of a Turn for research artifacts."""
+    id: int
+    prompt: str
+    response_summary: str
+    files_analyzed: List[str] = Field(default_factory=list)
+    files_changed: List[str] = Field(default_factory=list)
+    timestamp: datetime
+
+
 class Session(BaseModel):
     """Represents a user session with the orchestrator."""
     id: UUID
@@ -71,3 +81,33 @@ class Session(BaseModel):
     commit_sha: Optional[str] = None
     files_changed: List[str] = Field(default_factory=list)
     pr_url: Optional[str] = None
+
+
+class ResearchFinding(BaseModel):
+    """Individual finding from research."""
+    file: str
+    lines: Optional[str] = None
+    note: str
+    code_snippet: Optional[str] = None
+
+
+class ResearchArtifact(BaseModel):
+    """Research artifact capturing findings and recommendations."""
+    research_id: UUID
+    repo_name: str
+    base_branch: str
+    base_commit: str
+    created_at: datetime
+    user_id: str
+
+    # Summary of research findings
+    summary: str
+    findings: List[ResearchFinding]
+    recommendations: List[str]
+
+    # History of conversations
+    conversation: List[TurnSummary]
+
+    # Suggestions for next steps
+    suggested_delegation_prompt: str
+    relevant_files: List[str]
