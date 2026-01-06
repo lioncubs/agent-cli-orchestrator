@@ -1,0 +1,127 @@
+%% Authentication Flow
+%% Shows the authentication and authorization flow through the system
+
+sequenceDiagram
+    actor User
+    participant UI as Web UI/Client
+    participant API as API Gateway
+    participant AuthMW as Auth Middleware
+    participant AuthSvc as Auth Service
+    participant UserReg as User Registry
+    participant Storage as Storage Backend
+    participant Session as Session Manager
+    
+    rect rgb(239, 246, 255)
+        Note over User,AuthSvc: User Registration
+        User->>UI: Register Account
+        UI->>API: POST /auth/register
+        API->>AuthSvc: create_user()
+        AuthSvc->>AuthSvc: Hash password
+        AuthSvc->>AuthSvc: Validate git identity
+        AuthSvc->>UserReg: store_user()
+        UserReg->>Storage: Encrypted user data
+        Storage-->>UserReg: User ID
+        UserReg-->>AuthSvc: User created
+        AuthSvc-->>API: Success + User ID
+        API-->>UI: Registration success
+    end
+    
+    rect rgb(220, 252, 231)
+        Note over User,Session: Login & Token Generation
+        User->>UI: Login
+        UI->>API: POST /auth/login
+        API->>AuthSvc: authenticate(email, password)
+        AuthSvc->>UserReg: get_user_by_email()
+        UserReg->>Storage: Query user
+        Storage-->>UserReg: User data
+        UserReg-->>AuthSvc: User object
+        AuthSvc->>AuthSvc: Verify password hash
+        
+        alt Password Valid
+            AuthSvc->>AuthSvc: Generate JWT token
+            AuthSvc->>Session: create_session()
+            Session-->>AuthSvc: Session ID
+            AuthSvc-->>API: Token + User info
+            API-->>UI: Login success + token
+            UI->>UI: Store token
+        else Password Invalid
+            AuthSvc-->>API: Error: Invalid credentials
+            API-->>UI: Login failed
+        end
+    end
+    
+    rect rgb(255, 237, 213)
+        Note over User,AuthMW: Authenticated API Request
+        User->>UI: Perform Action
+        UI->>API: API Request<br/>Header: Authorization Bearer {token}
+        API->>AuthMW: Request with token
+        AuthMW->>AuthMW: Extract token from header
+        AuthMW->>AuthSvc: verify_token()
+        
+        alt Token Valid
+            AuthSvc->>UserReg: get_user_by_id()
+            UserReg->>Storage: Query user
+            Storage-->>UserReg: User data
+            UserReg-->>AuthSvc: User object
+            AuthSvc-->>AuthMW: User context
+            AuthMW->>AuthMW: Inject user into request
+            AuthMW->>API: Continue with user context
+            
+            API->>API: Execute endpoint logic
+            API->>API: Check permissions
+            
+            alt Permission Granted
+                API-->>UI: Success response
+            else Permission Denied
+                API-->>UI: Error: Forbidden (403)
+            end
+            
+        else Token Invalid/Expired
+            AuthMW-->>UI: Error: Unauthorized (401)
+        end
+    end
+    
+    rect rgb(243, 232, 255)
+        Note over User,Storage: API Key Authentication (Alternative)
+        User->>UI: Generate API Key
+        UI->>API: POST /auth/api-keys
+        API->>AuthSvc: create_api_key(user_id, scopes)
+        AuthSvc->>AuthSvc: Generate random key
+        AuthSvc->>AuthSvc: Hash key (SHA-256)
+        AuthSvc->>Storage: Store key hash + metadata
+        Storage-->>AuthSvc: Key ID
+        AuthSvc-->>API: Plain key (one-time only)
+        API-->>UI: API key shown once
+        
+        User->>User: Save API key securely
+        
+        Note over User,AuthMW: API Key Usage
+        User->>API: API Request<br/>Header: X-API-Key: {key}
+        API->>AuthMW: Request with API key
+        AuthMW->>AuthSvc: verify_api_key()
+        AuthSvc->>AuthSvc: Hash provided key
+        AuthSvc->>Storage: Find key by hash
+        
+        alt Key Found & Valid
+            Storage-->>AuthSvc: Key metadata + user_id
+            AuthSvc->>Storage: Update last_used_at
+            AuthSvc->>UserReg: get_user_by_id()
+            UserReg-->>AuthSvc: User object
+            AuthSvc-->>AuthMW: User context
+            AuthMW->>API: Continue with user context
+        else Key Not Found/Expired
+            AuthMW-->>User: Error: Unauthorized (401)
+        end
+    end
+    
+    rect rgb(254, 226, 226)
+        Note over User,Session: Logout & Session Cleanup
+        User->>UI: Logout
+        UI->>API: POST /auth/logout
+        API->>Session: destroy_session(session_id)
+        Session->>Storage: Delete session
+        Storage-->>Session: Deleted
+        Session-->>API: Success
+        API-->>UI: Logout success
+        UI->>UI: Clear stored token
+    end

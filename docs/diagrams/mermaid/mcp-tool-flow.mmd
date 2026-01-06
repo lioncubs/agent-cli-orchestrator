@@ -1,0 +1,102 @@
+%% MCP Tool Flow
+%% Shows how MCP tool invocations flow through the system
+
+sequenceDiagram
+    actor MCPClient as MCP Client<br/>(Claude Desktop)
+    participant MCP as MCP Server<br/>(FastMCP)
+    participant Tool as MCP Tool Handler
+    participant Service as Service Layer
+    participant Infra as Infrastructure
+    participant External as External System
+    
+    rect rgb(243, 232, 255)
+        Note over MCPClient,MCP: MCP Protocol Communication
+        MCPClient->>MCP: Tool Request<br/>(JSON-RPC)
+        MCP->>MCP: Validate Request
+        MCP->>MCP: Authenticate User
+    end
+    
+    alt Authentication Success
+        rect rgb(219, 234, 254)
+            Note over MCP,Tool: Tool Dispatch
+            MCP->>Tool: Dispatch to Tool Handler
+            Tool->>Tool: Parse Parameters
+            Tool->>Tool: Validate Input
+        end
+        
+        alt Query Tool
+            rect rgb(219, 234, 254)
+                Tool->>Service: query_service.execute()
+                Service->>Infra: Load session context
+                Infra-->>Service: Context data
+                Service->>External: Execute Copilot CLI
+                External-->>Service: Response
+                Service->>Infra: Save session turn
+                Service-->>Tool: Query result
+            end
+        else Research Tool
+            rect rgb(243, 232, 255)
+                Tool->>Service: research_service.execute()
+                Service->>Infra: Create temp worktree
+                Infra-->>Service: Worktree path
+                Service->>External: Execute in worktree
+                External-->>Service: Analysis results
+                Service->>Infra: Save research artifact
+                Service->>Infra: Cleanup worktree
+                Service-->>Tool: Research artifact
+            end
+        else Delegation Tool
+            rect rgb(255, 237, 213)
+                Tool->>Service: delegation_service.create()
+                Service->>Infra: Create branch + worktree
+                Infra-->>Service: Delegation setup
+                Service->>Service: Queue background task
+                Service-->>Tool: Delegation ID + status
+                
+                par Background Execution
+                    Service->>External: Execute Copilot CLI
+                    External-->>Service: Changes made
+                    Service->>Infra: Commit changes
+                    Service->>Service: Update status
+                end
+            end
+        else Session Tool
+            rect rgb(220, 252, 231)
+                Tool->>Service: session_service.action()
+                Service->>Infra: Session CRUD operation
+                Infra-->>Service: Session data
+                Service-->>Tool: Session result
+            end
+        else Repository Tool
+            rect rgb(239, 246, 255)
+                Tool->>Service: repo_service.action()
+                Service->>Infra: Repository operation
+                Infra-->>Service: Repository data
+                Service-->>Tool: Repository result
+            end
+        end
+        
+        rect rgb(243, 232, 255)
+            Note over Tool,MCP: Response Formatting
+            Tool->>Tool: Format response
+            Tool->>MCP: Return tool result
+            MCP->>MCP: Wrap in JSON-RPC
+            MCP-->>MCPClient: Tool Response
+        end
+        
+        MCPClient->>MCPClient: Display result to user
+        
+    else Authentication Failed
+        MCP-->>MCPClient: Error: Unauthorized
+    end
+    
+    rect rgb(254, 243, 199)
+        Note over MCPClient,External: Context Injection Flow (Multi-turn)
+        MCPClient->>MCP: Follow-up Tool Request
+        MCP->>Service: Request with session_id
+        Service->>Infra: Load conversation history
+        Infra-->>Service: Previous turns
+        Service->>Service: Build context prompt
+        Service->>External: Execute with context
+        External-->>Service: Contextual response
+    end

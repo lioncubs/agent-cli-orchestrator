@@ -1,0 +1,122 @@
+%% Platform PR Flow
+%% Shows how PRs/MRs are created across different Git platforms
+
+flowchart TB
+    Start[Delegation Complete<br/>Changes Committed]:::primaryOrange
+    
+    Start --> DetectPlatform{Detect Git Platform<br/>from Remote URL}
+    
+    DetectPlatform -->|bitbucket.org| BitbucketCloud
+    DetectPlatform -->|Bitbucket Server URL| BitbucketServer
+    DetectPlatform -->|gitlab.com| GitLabCloud
+    DetectPlatform -->|GitLab Self-hosted| GitLabSelfHosted
+    DetectPlatform -->|dev.azure.com| AzureDevOps
+    DetectPlatform -->|visualstudio.com| AzureDevOps
+    DetectPlatform -->|Other/Unknown| Generic
+    
+    subgraph BitbucketCloud[Bitbucket Cloud]
+        direction TB
+        BC1[Validate PAT]:::lightBlue
+        BC2[Push Branch]:::lightBlue
+        BC3[POST /repositories/{workspace}/{repo}/pullrequests]:::lightBlue
+        BC4[Set Reviewers]:::lightBlue
+        BC5[Add Description]:::lightBlue
+        BC6[Return PR URL]:::primaryGreen
+        
+        BC1 --> BC2 --> BC3 --> BC4 --> BC5 --> BC6
+    end
+    
+    subgraph BitbucketServer[Bitbucket Server]
+        direction TB
+        BS1[Validate Credentials]:::lightBlue
+        BS2[Push Branch]:::lightBlue
+        BS3[POST /rest/api/1.0/projects/{project}/repos/{repo}/pull-requests]:::lightBlue
+        BS4[Set Reviewers]:::lightBlue
+        BS5[Add Description]:::lightBlue
+        BS6[Return PR URL]:::primaryGreen
+        
+        BS1 --> BS2 --> BS3 --> BS4 --> BS5 --> BS6
+    end
+    
+    subgraph GitLabCloud[GitLab.com]
+        direction TB
+        GC1[Validate PAT]:::lightPurple
+        GC2[Push Branch]:::lightPurple
+        GC3[POST /api/v4/projects/{id}/merge_requests]:::lightPurple
+        GC4[Set Reviewers/Assignees]:::lightPurple
+        GC5[Add Description & Labels]:::lightPurple
+        GC6[Return MR URL]:::primaryGreen
+        
+        GC1 --> GC2 --> GC3 --> GC4 --> GC5 --> GC6
+    end
+    
+    subgraph GitLabSelfHosted[GitLab Self-hosted]
+        direction TB
+        GS1[Validate PAT]:::lightPurple
+        GS2[Push Branch]:::lightPurple
+        GS3[POST /api/v4/projects/{id}/merge_requests]:::lightPurple
+        GS4[Set Reviewers/Assignees]:::lightPurple
+        GS5[Add Description & Labels]:::lightPurple
+        GS6[Return MR URL]:::primaryGreen
+        
+        GS1 --> GS2 --> GS3 --> GS4 --> GS5 --> GS6
+    end
+    
+    subgraph AzureDevOps[Azure DevOps]
+        direction TB
+        AD1[Validate PAT]:::lightOrange
+        AD2[Push Branch]:::lightOrange
+        AD3[POST /{organization}/{project}/_apis/git/repositories/{repo}/pullrequests]:::lightOrange
+        AD4[Set Reviewers]:::lightOrange
+        AD5[Add Description & Work Items]:::lightOrange
+        AD6[Return PR URL]:::primaryGreen
+        
+        AD1 --> AD2 --> AD3 --> AD4 --> AD5 --> AD6
+    end
+    
+    subgraph Generic[Generic/Manual]
+        direction TB
+        G1[Push Branch]:::mediumGray
+        G2[Generate Manual Instructions]:::mediumGray
+        G3[Return CLI Commands]:::warning
+        G4[User Creates PR Manually]:::warning
+        
+        G1 --> G2 --> G3 --> G4
+    end
+    
+    BC6 --> Complete
+    BS6 --> Complete
+    GC6 --> Complete
+    GS6 --> Complete
+    AD6 --> Complete
+    G4 --> Complete
+    
+    Complete[PR/MR Created<br/>Awaiting Review]:::success
+    
+    Complete --> Review{Human Review}
+    
+    Review -->|Approved & Merged| Merged[Branch Merged<br/>Cleanup Worktree]:::success
+    Review -->|Changes Requested| Update[Update Delegation<br/>Continue Session]:::primaryOrange
+    Review -->|Rejected| Rejected[Close PR<br/>Cleanup Worktree & Branch]:::error
+    
+    Update --> Start
+    
+    %% Style definitions
+    classDef primaryBlue fill:#2563eb,stroke:#1e40af,color:#ffffff,stroke-width:2px
+    classDef primaryGreen fill:#16a34a,stroke:#15803d,color:#ffffff,stroke-width:2px
+    classDef primaryOrange fill:#ea580c,stroke:#c2410c,color:#ffffff,stroke-width:2px
+    classDef lightBlue fill:#dbeafe,stroke:#2563eb,color:#1e40af,stroke-width:2px
+    classDef lightPurple fill:#f3e8ff,stroke:#9333ea,color:#7e22ce,stroke-width:2px
+    classDef lightOrange fill:#ffedd5,stroke:#ea580c,color:#c2410c,stroke-width:2px
+    classDef mediumGray fill:#6b7280,stroke:#374151,color:#ffffff,stroke-width:2px
+    classDef success fill:#22c55e,stroke:#15803d,color:#ffffff,stroke-width:2px
+    classDef warning fill:#eab308,stroke:#ca8a04,color:#1f2937,stroke-width:2px
+    classDef error fill:#ef4444,stroke:#dc2626,color:#ffffff,stroke-width:2px
+    
+    %% Subgraph styles
+    style BitbucketCloud fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style BitbucketServer fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style GitLabCloud fill:#f3e8ff,stroke:#9333ea,stroke-width:2px
+    style GitLabSelfHosted fill:#f3e8ff,stroke:#9333ea,stroke-width:2px
+    style AzureDevOps fill:#ffedd5,stroke:#ea580c,stroke-width:2px
+    style Generic fill:#f3f4f6,stroke:#6b7280,stroke-width:2px

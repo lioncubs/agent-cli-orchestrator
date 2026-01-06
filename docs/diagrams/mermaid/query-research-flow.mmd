@@ -1,0 +1,104 @@
+%% Query and Research Flow
+%% Shows the differences between Query (direct) and Research (temp worktree) modes
+
+flowchart TB
+    User[User Request]:::primaryBlue
+    
+    User -->|Quick question| QueryPath
+    User -->|Deep analysis| ResearchPath
+    
+    subgraph QueryPath[Query Mode - Direct Access]
+        direction TB
+        Q1[Receive Query]:::lightBlue
+        Q2[Load Session<br/>Context Optional]:::lightBlue
+        Q3[Execute in<br/>Main Repository]:::lightBlue
+        Q4[Copilot CLI<br/>Read-Only Tools]:::mediumGray
+        Q5[Return Response]:::lightGreen
+        Q6[Save to Session<br/>if multi-turn]:::lightBlue
+        Q7[Immediate Cleanup]:::success
+        
+        Q1 --> Q2
+        Q2 --> Q3
+        Q3 --> Q4
+        Q4 --> Q5
+        Q5 --> Q6
+        Q6 --> Q7
+    end
+    
+    subgraph ResearchPath[Research Mode - Temporary Worktree]
+        direction TB
+        R1[Receive Research<br/>Request]:::lightPurple
+        R2[Create Temp Worktree<br/>Detached HEAD]:::lightOrange
+        R3[Set Read-Only<br/>Tool Policy]:::lightPurple
+        R4[Execute Copilot CLI<br/>in Worktree]:::mediumGray
+        R5[Multi-Turn Analysis<br/>Allowed]:::lightPurple
+        R6[Generate Research<br/>Artifact]:::lightGreen
+        R7[Save Findings &<br/>Recommendations]:::lightGreen
+        R8[Cleanup Worktree]:::success
+        R9[Return Artifact]:::primaryGreen
+        
+        R1 --> R2
+        R2 --> R3
+        R3 --> R4
+        R4 --> R5
+        R5 -->|Continue| R4
+        R5 -->|Complete| R6
+        R6 --> R7
+        R7 --> R8
+        R8 --> R9
+    end
+    
+    subgraph comparison[Mode Comparison]
+        direction TB
+        
+        subgraph queryChar[Query Characteristics]
+            QC1[✓ No worktree]:::info
+            QC2[✓ Fast execution]:::info
+            QC3[✓ Simple questions]:::info
+            QC4[✗ Limited context]:::warning
+            QC5[✗ No persistence]:::warning
+        end
+        
+        subgraph researchChar[Research Characteristics]
+            RC1[✓ Isolated worktree]:::success
+            RC2[✓ Deep analysis]:::success
+            RC3[✓ Multi-turn context]:::success
+            RC4[✓ Saved artifacts]:::success
+            RC5[✗ Slower setup]:::warning
+        end
+    end
+    
+    Q7 -.->|Use Case| queryChar
+    R9 -.->|Use Case| researchChar
+    
+    subgraph outcomes[Possible Outcomes]
+        direction LR
+        O1[Direct Answer]:::primaryGreen
+        O2[Research Report]:::primaryGreen
+        O3[Suggested Delegation<br/>Prompt]:::primaryOrange
+    end
+    
+    Q7 --> O1
+    R9 --> O2
+    R9 -.->|May suggest| O3
+    
+    %% Style definitions
+    classDef primaryBlue fill:#2563eb,stroke:#1e40af,color:#ffffff,stroke-width:2px
+    classDef primaryGreen fill:#16a34a,stroke:#15803d,color:#ffffff,stroke-width:2px
+    classDef primaryOrange fill:#ea580c,stroke:#c2410c,color:#ffffff,stroke-width:2px
+    classDef lightBlue fill:#dbeafe,stroke:#2563eb,color:#1e40af,stroke-width:2px
+    classDef lightGreen fill:#dcfce7,stroke:#16a34a,color:#15803d,stroke-width:2px
+    classDef lightOrange fill:#ffedd5,stroke:#ea580c,color:#c2410c,stroke-width:2px
+    classDef lightPurple fill:#f3e8ff,stroke:#9333ea,color:#7e22ce,stroke-width:2px
+    classDef mediumGray fill:#6b7280,stroke:#374151,color:#ffffff,stroke-width:2px
+    classDef success fill:#22c55e,stroke:#15803d,color:#ffffff,stroke-width:2px
+    classDef warning fill:#eab308,stroke:#ca8a04,color:#1f2937,stroke-width:2px
+    classDef info fill:#3b82f6,stroke:#2563eb,color:#ffffff,stroke-width:2px
+    
+    %% Subgraph styles
+    style QueryPath fill:#eff6ff,stroke:#2563eb,stroke-width:3px
+    style ResearchPath fill:#faf5ff,stroke:#9333ea,stroke-width:3px
+    style comparison fill:#fafafa,stroke:#6b7280,stroke-width:2px
+    style queryChar fill:#dbeafe,stroke:#2563eb,stroke-width:2px
+    style researchChar fill:#f3e8ff,stroke:#9333ea,stroke-width:2px
+    style outcomes fill:#f0fdf4,stroke:#16a34a,stroke-width:2px

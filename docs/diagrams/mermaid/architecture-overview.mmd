@@ -1,0 +1,110 @@
+%% Architecture Overview
+%% Shows the high-level system architecture with clients, API/MCP, services, and integrations
+
+flowchart TB
+    subgraph clients[External Clients]
+        direction LR
+        C1[React Dashboard<br/>Browser]:::primaryBlue
+        C2[Claude Desktop<br/>MCP Client]:::primaryPurple
+        C3[REST API Client<br/>curl, scripts]:::primaryBlue
+        C4[CLI Tools]:::primaryBlue
+    end
+
+    subgraph orchestrator[Agent CLI Orchestrator Core]
+        direction TB
+        
+        subgraph api[API Layer]
+            direction LR
+            A1[FastAPI Router]:::primaryBlue
+            A2[MCP Server<br/>FastMCP]:::primaryPurple
+            A3[Session Manager]:::primaryOrange
+            A4[Auth Manager]:::primaryGreen
+        end
+        
+        subgraph services[Service Layer]
+            direction LR
+            S1[Query Service]:::lightBlue
+            S2[Research Service]:::lightBlue
+            S3[Delegation Service]:::lightOrange
+            S4[Identity Service]:::lightGreen
+            S5[Permissions Service]:::lightPurple
+        end
+        
+        subgraph infra[Infrastructure Layer]
+            direction LR
+            I1[Copilot CLI<br/>Wrapper]:::mediumGray
+            I2[Git Operations]:::mediumGray
+            I3[Storage Backend<br/>YAML/DB]:::mediumGray
+            I4[Platform<br/>Integrations]:::mediumGray
+            I5[Registry<br/>Manager]:::mediumGray
+        end
+    end
+
+    subgraph external[External Systems]
+        direction TB
+        E1[GitHub Copilot CLI<br/>gh copilot -p]:::darkGray
+        
+        subgraph platforms[Git Platforms]
+            direction LR
+            P1[Bitbucket<br/>Cloud/Server]:::lightGray
+            P2[GitLab<br/>.com/Self-hosted]:::lightGray
+            P3[Azure DevOps<br/>Services/Server]:::lightGray
+            P4[Generic Git<br/>SSH/HTTPS]:::lightGray
+        end
+    end
+
+    %% Client connections
+    C1 --> A1
+    C2 --> A2
+    C3 --> A1
+    C4 --> A1
+
+    %% API to Services
+    A1 --> S1
+    A1 --> S2
+    A1 --> S3
+    A2 --> S1
+    A2 --> S2
+    A2 --> S3
+    A3 --> services
+    A4 --> S4
+    A4 --> S5
+
+    %% Services to Infrastructure
+    S1 --> I1
+    S2 --> I1
+    S2 --> I2
+    S3 --> I1
+    S3 --> I2
+    S4 --> I3
+    S5 --> I3
+    services --> I5
+
+    %% Infrastructure to External
+    I1 --> E1
+    I4 --> P1
+    I4 --> P2
+    I4 --> P3
+    I4 --> P4
+
+    %% Style definitions
+    classDef primaryBlue fill:#2563eb,stroke:#1e40af,color:#ffffff,stroke-width:2px
+    classDef primaryPurple fill:#9333ea,stroke:#7e22ce,color:#ffffff,stroke-width:2px
+    classDef primaryOrange fill:#ea580c,stroke:#c2410c,color:#ffffff,stroke-width:2px
+    classDef primaryGreen fill:#16a34a,stroke:#15803d,color:#ffffff,stroke-width:2px
+    classDef lightBlue fill:#dbeafe,stroke:#2563eb,color:#1e40af,stroke-width:2px
+    classDef lightOrange fill:#ffedd5,stroke:#ea580c,color:#c2410c,stroke-width:2px
+    classDef lightGreen fill:#dcfce7,stroke:#16a34a,color:#15803d,stroke-width:2px
+    classDef lightPurple fill:#f3e8ff,stroke:#9333ea,color:#7e22ce,stroke-width:2px
+    classDef mediumGray fill:#6b7280,stroke:#374151,color:#ffffff,stroke-width:2px
+    classDef darkGray fill:#1f2937,stroke:#111827,color:#ffffff,stroke-width:2px
+    classDef lightGray fill:#f3f4f6,stroke:#6b7280,color:#1f2937,stroke-width:2px
+
+    %% Subgraph styles
+    style clients fill:#f9fafb,stroke:#2563eb,stroke-width:3px
+    style orchestrator fill:#ffffff,stroke:#9333ea,stroke-width:3px
+    style api fill:#eff6ff,stroke:#2563eb,stroke-width:2px
+    style services fill:#fef3c7,stroke:#ea580c,stroke-width:2px
+    style infra fill:#f3f4f6,stroke:#6b7280,stroke-width:2px
+    style external fill:#fafafa,stroke:#1f2937,stroke-width:3px
+    style platforms fill:#ffffff,stroke:#6b7280,stroke-width:2px
