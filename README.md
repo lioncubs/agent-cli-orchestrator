@@ -371,14 +371,14 @@ For detailed security recommendations and authentication implementation examples
 ### Planning & Development
 The `docs/planning/` directory contains comprehensive planning documentation:
 
-- **[action-plan.md](docs/planning/action-plan.md)** - Detailed development roadmap with task breakdown
-- **[plan-summary.md](docs/planning/plan-summary.md)** - High-level project plan overview
+- **[action-plan.md](docs/planning/project-plan/action-plan.md)** - Detailed development roadmap with task breakdown
+- **[plan-summary.md](docs/planning/project-plan/plan-summary.md)** - High-level project plan overview
 - **[security-hardening-addendum.md](docs/planning/security-hardening-addendum.md)** - Security hardening guide and checklist
-- **[completion-summary.md](docs/planning/completion-summary.md)** - Work completion summaries
-- **[coverage-improvement.md](docs/planning/coverage-improvement.md)** - Test coverage improvement plan
-- **[implementation-guide.md](docs/planning/implementation-guide.md)** - Implementation guidelines
-- **[implementation-summary.md](docs/planning/implementation-summary.md)** - Implementation notes
-- **[plan.md](docs/planning/plan.md)** - Original project plan
+- **[completion-summary.md](docs/planning/project-plan/completion-summary.md)** - Work completion summaries
+- **[coverage-improvement.md](docs/planning/project-plan/coverage-improvement.md)** - Test coverage improvement plan
+- **[implementation-guide.md](docs/planning/project-plan/implementation-guide.md)** - Implementation guidelines
+- **[implementation-summary.md](docs/planning/project-plan/implementation-summary.md)** - Implementation notes
+- **[plan.md](docs/planning/project-plan/plan.md)** - Original project plan
 - **[project-plan.md](docs/planning/project-plan.md)** - Comprehensive project planning
 - **[testing-plan.md](docs/planning/testing-plan.md)** - Testing strategy and plan
 

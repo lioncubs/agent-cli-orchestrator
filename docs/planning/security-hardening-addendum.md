@@ -2,7 +2,7 @@
 
 ## Overview
 
-This addendum complements the existing [action-plan.md](action-plan.md) and outlines critical security enhancements that should be implemented before Phase 5 feature development. Security hardening is essential for production deployment and protecting against common web application vulnerabilities.
+This addendum complements the existing [project-plan/action-plan.md](project-plan/action-plan.md) and outlines critical security enhancements that should be implemented before Phase 5 feature development. Security hardening is essential for production deployment and protecting against common web application vulnerabilities.
 
 ---
 

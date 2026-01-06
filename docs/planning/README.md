@@ -6,7 +6,7 @@ This directory contains all planning, roadmap, and implementation documentation 
 
 ### Active Plans
 
-#### [action-plan.md](action-plan.md)
+#### [project-plan/action-plan.md](project-plan/action-plan.md)
 **Detailed Development Roadmap**
 
 The primary planning document containing:
@@ -21,7 +21,7 @@ The primary planning document containing:
 
 ---
 
-#### [plan-summary.md](plan-summary.md)
+#### [project-plan/plan-summary.md](project-plan/plan-summary.md)
 **High-Level Project Overview**
 
 A condensed version of the action plan providing:
@@ -57,7 +57,7 @@ Comprehensive security implementation guide covering:
 
 ### Implementation Guides
 
-#### [implementation-guide.md](implementation-guide.md)
+#### [project-plan/implementation-guide.md](project-plan/implementation-guide.md)
 **Step-by-Step Implementation Guide**
 
 Detailed implementation instructions including:
@@ -70,7 +70,7 @@ Detailed implementation instructions including:
 
 ---
 
-#### [implementation-summary.md](implementation-summary.md)
+#### [project-plan/implementation-summary.md](project-plan/implementation-summary.md)
 **Implementation Notes & Decisions**
 
 Documents implementation decisions and notes:
@@ -85,7 +85,7 @@ Documents implementation decisions and notes:
 
 ### Test Coverage & Quality
 
-#### [coverage-improvement.md](coverage-improvement.md)
+#### [project-plan/coverage-improvement.md](project-plan/coverage-improvement.md)
 **Test Coverage Improvement Plan**
 
 Strategy for improving code coverage:
@@ -115,7 +115,7 @@ Overall testing approach including:
 
 ### Historical & Reference
 
-#### [completion-summary.md](completion-summary.md)
+#### [project-plan/completion-summary.md](project-plan/completion-summary.md)
 **Work Completion Summaries**
 
 Historical record of completed work including:
@@ -128,7 +128,7 @@ Historical record of completed work including:
 
 ---
 
-#### [plan.md](plan.md)
+#### [project-plan/plan.md](project-plan/plan.md)
 **Original Project Plan**
 
 The initial project plan and vision:
@@ -174,13 +174,13 @@ Broader project planning documentation:
 ## 🎯 Quick Start Guide for Contributors
 
 ### New to the Project?
-1. Start with **[plan-summary.md](plan-summary.md)** for an overview
-2. Review **[action-plan.md](action-plan.md)** for detailed tasks
+1. Start with **[project-plan/plan-summary.md](project-plan/plan-summary.md)** for an overview
+2. Review **[project-plan/action-plan.md](project-plan/action-plan.md)** for detailed tasks
 3. Check **[testing-plan.md](testing-plan.md)** for testing guidelines
-4. Follow **[implementation-guide.md](implementation-guide.md)** for coding patterns
+4. Follow **[project-plan/implementation-guide.md](project-plan/implementation-guide.md)** for coding patterns
 
 ### Looking for Tasks?
-1. Check [action-plan.md](action-plan.md) for the full task list
+1. Check [project-plan/action-plan.md](project-plan/action-plan.md) for the full task list
 2. Priority order: Phase 1 → Phase 2 → Phase 3 → Phase 4.5 (Security) → Phase 4 → Phase 5
 3. Security tasks in [security-hardening-addendum.md](security-hardening-addendum.md) are **HIGH PRIORITY**
 
@@ -191,7 +191,7 @@ Broader project planning documentation:
 - All security tasks should be completed before Phase 5 features
 
 ### Improving Test Coverage?
-- Review [coverage-improvement.md](coverage-improvement.md) for coverage targets
+- Review [project-plan/coverage-improvement.md](project-plan/coverage-improvement.md) for coverage targets
 - Follow [testing-plan.md](testing-plan.md) for testing approach
 - Aim for 80%+ coverage overall
 
@@ -199,12 +199,12 @@ Broader project planning documentation:
 
 ### When to Update These Documents
 
-- **action-plan.md**: When tasks are completed, reprioritized, or new phases added
-- **plan-summary.md**: When major milestones are reached or priorities shift
+- **project-plan/action-plan.md**: When tasks are completed, reprioritized, or new phases added
+- **project-plan/plan-summary.md**: When major milestones are reached or priorities shift
 - **security-hardening-addendum.md**: When security requirements change or new threats emerge
-- **implementation-guide.md**: When new patterns or best practices are established
-- **coverage-improvement.md**: When coverage targets are met or adjusted
-- **completion-summary.md**: After completing significant features or phases
+- **project-plan/implementation-guide.md**: When new patterns or best practices are established
+- **project-plan/coverage-improvement.md**: When coverage targets are met or adjusted
+- **project-plan/completion-summary.md**: After completing significant features or phases
 
 ### Document Ownership
 
