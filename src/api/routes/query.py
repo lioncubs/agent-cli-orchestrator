@@ -173,6 +173,8 @@ async def execute_query(request: QueryRequest):
             status=result.get("status", "success"),
             result=result
         )
+    except HTTPException:
+        raise
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except Exception as e:
