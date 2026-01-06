@@ -12,6 +12,13 @@ from git_operations import GitOperations
 from copilot_cli import copilot_cli
 from activity_log import activity_log
 
+# Import session management components
+from src.session.store import SessionStore
+from src.session.manager import SessionManager
+from src.api.routes.sessions import router as sessions_router, init_session_routes
+from src.integrations.git import GitOperations as GitOpsIntegration
+from src.integrations.copilot import CopilotCLI
+
 
 # Pydantic models
 class PromptRequest(BaseModel):
@@ -76,6 +83,20 @@ app = FastAPI(
 # Initialize Git operations
 git_ops = GitOperations()
 
+# Initialize session management
+session_store = SessionStore(default_ttl_hours=24)
+git_ops_integration = GitOpsIntegration()
+copilot_cli_integration = CopilotCLI()
+session_manager = SessionManager(
+    store=session_store,
+    git_ops=git_ops_integration,
+    copilot_cli=copilot_cli_integration
+)
+
+# Initialize and include session routes
+init_session_routes(session_store, session_manager)
+app.include_router(sessions_router)
+
 
 @app.get("/")
 async def root():
@@ -88,7 +109,7 @@ async def root():
             "GET /branch/current": "Get current branch",
             "GET /branches": "List all branches (local and remote)",
             "GET /worktrees": "List all worktrees",
-            "GET /sessions": "List active Copilot CLI sessions",
+            "GET /copilot/sessions": "List active Copilot CLI sessions",
             "GET /logs": "List recent activity logs",
             "GET /logs/copilot": "List detailed Copilot execution logs with full input/output",
             "POST /branch/select": "Switch to a branch",
@@ -98,6 +119,14 @@ async def root():
             "POST /prompt/stream": "Execute Copilot CLI prompt with real-time streaming output (SSE)",
             "GET /ui": "Web interface for testing",
             "GET /streaming-test": "Streaming output test page"
+        },
+        "session_management": {
+            "POST /sessions": "Create a new session",
+            "GET /sessions": "List sessions with filters",
+            "GET /sessions/{id}": "Get session details",
+            "POST /sessions/{id}/continue": "Continue a session",
+            "POST /sessions/{id}/complete": "Mark session as completed",
+            "DELETE /sessions/{id}": "Delete or abandon a session"
         }
     }
 
@@ -512,13 +541,13 @@ async def execute_prompt_streaming(request: PromptRequest):
     )
 
 
-@app.get("/sessions")
-async def list_sessions():
-    """List active Copilot CLI sessions."""
+@app.get("/copilot/sessions")
+async def list_copilot_sessions():
+    """List active Copilot CLI sessions (legacy endpoint)."""
     try:
         result = copilot_cli.list_sessions()
         activity_log.add(
-            action="list_sessions",
+            action="list_copilot_sessions",
             status=result.get("status", "unknown"),
             payload={},
             result=result

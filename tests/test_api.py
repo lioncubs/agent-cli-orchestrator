@@ -387,7 +387,7 @@ class TestAPIEndpoints:
         assert "detail" in response.json()
     
     def test_list_sessions_success(self, client, mock_copilot_cli):
-        """Test GET /sessions returns list of sessions."""
+        """Test GET /copilot/sessions returns list of sessions."""
         mock_copilot_cli.list_sessions.return_value = {
             "status": "success",
             "sessions": [
@@ -397,7 +397,7 @@ class TestAPIEndpoints:
             "count": 2
         }
         
-        response = client.get("/sessions")
+        response = client.get("/copilot/sessions")
         
         assert response.status_code == 200
         data = response.json()
@@ -406,14 +406,14 @@ class TestAPIEndpoints:
         assert len(data["sessions"]) == 2
     
     def test_list_sessions_empty(self, client, mock_copilot_cli):
-        """Test GET /sessions with no active sessions."""
+        """Test GET /copilot/sessions with no active sessions."""
         mock_copilot_cli.list_sessions.return_value = {
             "status": "success",
             "sessions": [],
             "count": 0
         }
         
-        response = client.get("/sessions")
+        response = client.get("/copilot/sessions")
         
         assert response.status_code == 200
         data = response.json()
@@ -421,13 +421,13 @@ class TestAPIEndpoints:
         assert data["sessions"] == []
     
     def test_list_sessions_error(self, client, mock_copilot_cli):
-        """Test GET /sessions handles errors."""
+        """Test GET /copilot/sessions handles errors."""
         mock_copilot_cli.list_sessions.return_value = {
             "status": "error",
             "message": "Copilot CLI not available"
         }
         
-        response = client.get("/sessions")
+        response = client.get("/copilot/sessions")
         
         assert response.status_code == 400
         assert "detail" in response.json()
