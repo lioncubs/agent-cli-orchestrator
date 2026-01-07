@@ -30,14 +30,18 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         self.collect_system_metrics = collect_system_metrics
         self.system_metrics_interval = system_metrics_interval
         self._system_metrics_task = None
+        self._started = False
         
-        if collect_system_metrics:
-            # Start background task for system metrics collection
-            self._start_system_metrics_collection()
+        # Don't start immediately - will be started after app startup
     
-    def _start_system_metrics_collection(self):
+    def start_system_metrics_collection(self):
         """Start background task for collecting system metrics."""
+        if self._started or not self.collect_system_metrics:
+            return
+        
         async def collect_periodically():
+            # Wait a bit before first collection to ensure DB is ready
+            await asyncio.sleep(5)
             while True:
                 try:
                     await self.metrics_collector.record_system_metrics()
@@ -47,6 +51,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         
         # Create task but don't await it
         self._system_metrics_task = asyncio.create_task(collect_periodically())
+        self._started = True
         logger.info(f"System metrics collection started (interval: {self.system_metrics_interval}s)")
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:

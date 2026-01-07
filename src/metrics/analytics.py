@@ -156,18 +156,43 @@ class AnalyticsService:
             start_time = datetime.utcnow() - timedelta(hours=hours)
             
             async with self.db_manager.get_session() as session:
-                # Overall metrics
+                # Overall metrics - simplified for SQLite compatibility
                 result = await session.execute(
                     select(
                         func.count(APIMetric.id).label('total_requests'),
                         func.avg(APIMetric.response_time_ms).label('avg_response_time'),
-                        func.percentile_cont(0.5).within_group(APIMetric.response_time_ms).label('p50'),
-                        func.percentile_cont(0.95).within_group(APIMetric.response_time_ms).label('p95'),
-                        func.percentile_cont(0.99).within_group(APIMetric.response_time_ms).label('p99'),
                         func.max(APIMetric.response_time_ms).label('max_response_time')
                     ).where(APIMetric.timestamp >= start_time)
                 )
                 overall = result.first()
+                
+                # Get all response times for percentile calculation
+                response_times_result = await session.execute(
+                    select(APIMetric.response_time_ms)
+                    .where(APIMetric.timestamp >= start_time)
+                    .order_by(APIMetric.response_time_ms)
+                )
+                response_times = [row[0] for row in response_times_result.fetchall()]
+                
+                # Calculate percentiles manually
+                p50 = 0.0
+                p95 = 0.0
+                p99 = 0.0
+                if response_times:
+                    import statistics
+                    try:
+                        p50 = statistics.median(response_times) if len(response_times) > 0 else 0.0
+                        if len(response_times) > 1:
+                            p95 = statistics.quantiles(response_times, n=20)[18] if len(response_times) >= 20 else response_times[-1]
+                            p99 = statistics.quantiles(response_times, n=100)[98] if len(response_times) >= 100 else response_times[-1]
+                    except Exception:
+                        # Fallback if quantiles fail
+                        idx_50 = int(len(response_times) * 0.5)
+                        idx_95 = int(len(response_times) * 0.95)
+                        idx_99 = int(len(response_times) * 0.99)
+                        p50 = response_times[min(idx_50, len(response_times) - 1)]
+                        p95 = response_times[min(idx_95, len(response_times) - 1)]
+                        p99 = response_times[min(idx_99, len(response_times) - 1)]
                 
                 # Endpoint-specific metrics
                 endpoint_result = await session.execute(
@@ -212,9 +237,9 @@ class AnalyticsService:
                     "overall": {
                         "total_requests": overall.total_requests or 0,
                         "avg_response_time_ms": float(overall.avg_response_time or 0),
-                        "p50_response_time_ms": float(overall.p50 or 0),
-                        "p95_response_time_ms": float(overall.p95 or 0),
-                        "p99_response_time_ms": float(overall.p99 or 0),
+                        "p50_response_time_ms": float(p50),
+                        "p95_response_time_ms": float(p95),
+                        "p99_response_time_ms": float(p99),
                         "max_response_time_ms": float(overall.max_response_time or 0)
                     },
                     "endpoints": endpoints[:20],  # Top 20 endpoints
