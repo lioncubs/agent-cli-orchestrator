@@ -119,7 +119,7 @@ app = FastAPI(
 )
 
 # Setup CORS with configuration
-cors_config = config.config.get("security", {}).get("cors", {})
+cors_config = config.get("security.cors", {})
 if cors_config.get("enabled", True):
     setup_cors(
         app,
@@ -129,7 +129,7 @@ if cors_config.get("enabled", True):
     logger.info("CORS configured")
 
 # Add security headers middleware
-security_headers_config = config.config.get("security", {}).get("headers", {})
+security_headers_config = config.get("security.headers", {})
 app.add_middleware(
     SecurityHeadersMiddleware,
     enable_hsts=security_headers_config.get("enable_hsts", False),
@@ -139,7 +139,7 @@ app.add_middleware(
 logger.info("Security headers middleware configured")
 
 # Add rate limiting middleware
-rate_limit_config = config.config.get("security", {}).get("rate_limit", {})
+rate_limit_config = config.get("security.rate_limit", {})
 if rate_limit_config.get("enabled", True):
     app.add_middleware(
         RateLimitMiddleware,
@@ -155,7 +155,7 @@ auth_storage = YAMLBackend(storage_dir=auth_storage_dir)
 auth_service = AuthService(storage=auth_storage)
 
 # Add authentication middleware
-auth_config = config.config.get("security", {}).get("auth", {})
+auth_config = config.get("security.auth", {})
 if auth_config.get("enabled", True):
     app.add_middleware(
         AuthMiddleware,
@@ -1573,7 +1573,7 @@ if __name__ == "__main__":
     import uvicorn
     
     # Get server configuration
-    server_config = config.config.get("server", {})
+    server_config = config.get("server", {})
     ssl_enabled = server_config.get("ssl_enabled", False)
     
     # Prepare uvicorn kwargs
