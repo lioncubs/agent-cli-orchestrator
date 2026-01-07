@@ -8,6 +8,7 @@ from src.mcp.models import (
     RepoInfo,
     MCPError
 )
+from src.session.models import SessionStatus
 from config_loader import config
 from src.integrations.git import GitOperations
 from src.session.store import SessionStore
@@ -57,7 +58,7 @@ class RepositoryTools:
                     
                     # Count active sessions for this repo
                     all_sessions = await self.session_store.list_sessions(repo_name=repo_name)
-                    active_sessions = [s for s in all_sessions if s.status.value in ["active", "committed"]]
+                    active_sessions = [s for s in all_sessions if s.status in [SessionStatus.ACTIVE, SessionStatus.COMMITTED]]
                     
                     repos.append(
                         RepoInfo(
@@ -124,7 +125,7 @@ class RepositoryTools:
                 
                 # Count active sessions for this repo
                 all_sessions = await self.session_store.list_sessions(repo_name=input_data.repo_name)
-                active_sessions = [s for s in all_sessions if s.status.value in ["active", "committed"]]
+                active_sessions = [s for s in all_sessions if s.status in [SessionStatus.ACTIVE, SessionStatus.COMMITTED]]
                 
                 return RepoInfo(
                     name=input_data.repo_name,
