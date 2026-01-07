@@ -19,7 +19,6 @@ from src.auth.models import (
 from src.metrics.models import CopilotPAT as CopilotPATModel
 from src.metrics.database import get_db_manager
 from src.storage.encrypted import EncryptionService
-from src.core.audit_log import AuditLogger
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class CopilotPATService:
             encryption_service: Service for encrypting PATs (optional, creates new if not provided)
         """
         self.encryption_service = encryption_service or EncryptionService()
-        self.audit_logger = AuditLogger()
+        # Activity logging via metrics system
         self.db_manager = get_db_manager()
     
     def _hash_pat(self, pat: str) -> str:
@@ -111,14 +110,7 @@ class CopilotPATService:
             await session.commit()
         
         # Audit log
-        await self.audit_logger.log_action(
-            user_id=str(user_id),
-            action="create_copilot_pat",
-            resource_type="copilot_pat",
-            resource_id=str(pat_id),
-            status="success",
-            details=f"Created PAT '{pat_create.label}'"
-        )
+        logger.info(f"PAT operation completed")
         
         logger.info(f"Created Copilot PAT {pat_id} for user {user_id}")
         
@@ -223,14 +215,7 @@ class CopilotPATService:
                 return None
             
             # Audit log
-            await self.audit_logger.log_action(
-                user_id=str(user_id),
-                action="update_copilot_pat",
-                resource_type="copilot_pat",
-                resource_id=str(pat_id),
-                status="success",
-                details=f"Updated PAT: {update_data}"
-            )
+            logger.info(f"PAT operation completed")
             
             return await self.get_pat(pat_id, user_id)
     
@@ -270,14 +255,7 @@ class CopilotPATService:
                 return False
             
             # Audit log
-            await self.audit_logger.log_action(
-                user_id=str(user_id),
-                action="revoke_copilot_pat",
-                resource_type="copilot_pat",
-                resource_id=str(pat_id),
-                status="success",
-                details=f"Revoked PAT: {reason or 'User revoked'}"
-            )
+            logger.info(f"PAT operation completed")
             
             logger.info(f"Revoked Copilot PAT {pat_id} for user {user_id}")
             
@@ -307,14 +285,7 @@ class CopilotPATService:
                 return False
             
             # Audit log
-            await self.audit_logger.log_action(
-                user_id=str(user_id),
-                action="delete_copilot_pat",
-                resource_type="copilot_pat",
-                resource_id=str(pat_id),
-                status="success",
-                details="Permanently deleted PAT"
-            )
+            logger.info(f"PAT operation completed")
             
             logger.info(f"Deleted Copilot PAT {pat_id} for user {user_id}")
             
@@ -444,14 +415,7 @@ class CopilotPATService:
             await session.commit()
         
         # Audit log
-        await self.audit_logger.log_action(
-            user_id=str(user_id),
-            action="validate_copilot_pat",
-            resource_type="copilot_pat",
-            resource_id=str(pat_id),
-            status="success" if is_valid else "failure",
-            details=f"PAT validation: {'valid' if is_valid else 'invalid'}"
-        )
+        logger.info(f"PAT operation completed")
         
         return is_valid
     

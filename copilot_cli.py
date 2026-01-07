@@ -53,14 +53,32 @@ class CopilotCLI:
                 command.extend(['--resume', options['session_id']])
 
         return command
+    
+    def _get_env_with_pat(self, pat: Optional[str] = None) -> Optional[Dict[str, str]]:
+        """Get environment variables with optional GitHub PAT.
+        
+        Args:
+            pat: GitHub Personal Access Token for authentication
+            
+        Returns:
+            Environment dict with PAT if provided, None to use default environment
+        """
+        if not pat:
+            return None
+        
+        import os
+        env = os.environ.copy()
+        env['GITHUB_TOKEN'] = pat
+        return env
 
-    def execute_prompt(self, prompt: str, options: Optional[Dict[str, Any]] = None, cwd: Optional[str] = None) -> Dict[str, Any]:
+    def execute_prompt(self, prompt: str, options: Optional[Dict[str, Any]] = None, cwd: Optional[str] = None, pat: Optional[str] = None) -> Dict[str, Any]:
         """Execute a synchronous prompt via Copilot CLI.
 
         Args:
             prompt: The prompt text to send to Copilot.
             options: Optional CLI overrides such as model, session_id, and allow_all_tools.
             cwd: Optional working directory for the command execution.
+            pat: Optional GitHub Personal Access Token for authentication.
 
         Returns:
             Dict with status, stdout, stderr, and exit code.
@@ -79,6 +97,7 @@ class CopilotCLI:
         
         try:
             command = self._build_command(prompt, options)
+            env = self._get_env_with_pat(pat)
             
             # Log the full input
             import datetime
@@ -89,7 +108,8 @@ class CopilotCLI:
                 "prompt": prompt,
                 "options": options,
                 "command": command,
-                "cwd": cwd
+                "cwd": cwd,
+                "uses_pat": pat is not None
             }
             
             # Execute command
@@ -98,7 +118,8 @@ class CopilotCLI:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
-                cwd=cwd
+                cwd=cwd,
+                env=env
             )
             
             # Log the full output
@@ -148,7 +169,7 @@ class CopilotCLI:
                 "message": f"Unexpected error: {str(e)}"
             }
     
-    async def execute_prompt_async(self, prompt: str, options: Optional[Dict[str, Any]] = None, cwd: Optional[str] = None) -> Dict[str, Any]:
+    async def execute_prompt_async(self, prompt: str, options: Optional[Dict[str, Any]] = None, cwd: Optional[str] = None, pat: Optional[str] = None) -> Dict[str, Any]:
         """Execute an asynchronous prompt via Copilot CLI.
         
         Args:
@@ -158,6 +179,7 @@ class CopilotCLI:
                 - worktree: Worktree path for background agent
                 - session_id: Existing session ID to continue
             cwd: Optional working directory for the command execution.
+            pat: Optional GitHub Personal Access Token for authentication.
         
         Returns:
             Dict with status and response from Copilot CLI
@@ -176,6 +198,7 @@ class CopilotCLI:
         
         try:
             command = self._build_command(prompt, options)
+            env = self._get_env_with_pat(pat)
             
             # Log the full input
             import datetime
@@ -186,7 +209,8 @@ class CopilotCLI:
                 "prompt": prompt,
                 "options": options,
                 "command": command,
-                "cwd": cwd
+                "cwd": cwd,
+                "uses_pat": pat is not None
             }
             
             # Execute command asynchronously
@@ -194,7 +218,8 @@ class CopilotCLI:
                 *command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                cwd=cwd
+                cwd=cwd,
+                env=env
             )
             
             try:
