@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from pathlib import Path
 import os
 import asyncio
@@ -911,10 +911,23 @@ async def list_copilot_logs(limit: Optional[int] = 20):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/ui")
-@app.get("/ui/{full_path:path}")
-async def serve_react_app(full_path: str = ""):
-    """Serve the React UI application."""
+@app.get("/ui", response_model=None)
+@app.get("/ui/{full_path:path}", response_model=None)
+async def serve_react_app(full_path: str = "") -> Union[HTMLResponse, FileResponse]:
+    """Serve the React UI application.
+
+    Args:
+        full_path: Optional path segment captured after ``/ui/``. This allows the React
+            router to handle client-side routes while the backend always serves the
+            same ``index.html`` file. This parameter is intentionally unused in the
+            function body as it exists only for route matching.
+
+    Returns:
+        FileResponse: The built React application's ``index.html`` file when the UI
+            build artifacts exist at ``UI_DIST_PATH``.
+        HTMLResponse: An HTML page with status code 404 explaining that the React UI
+            has not been built when ``index.html`` is missing.
+    """
     ui_index_path = UI_DIST_PATH / "index.html"
     
     if not ui_index_path.exists():
@@ -942,8 +955,13 @@ npm run build
 
 
 @app.get("/legacy-ui", response_class=HTMLResponse)
-async def legacy_web_interface():
-    """Serve the legacy HTML web interface."""
+async def legacy_web_interface() -> HTMLResponse:
+    """Serve the legacy HTML web interface.
+
+    Returns:
+        HTMLResponse: HTML page containing the legacy web interface for
+            Agent CLI Orchestrator.
+    """
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
