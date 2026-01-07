@@ -267,12 +267,13 @@ app.include_router(auth_router)
 app.mount("/mcp", mcp_server.get_app())
 
 # Mount React UI static files
-ui_dist_path = Path(__file__).parent / "src" / "ui" / "dist"
-if ui_dist_path.exists():
-    app.mount("/assets", StaticFiles(directory=str(ui_dist_path / "assets")), name="assets")
-    logger.info(f"React UI static files mounted from {ui_dist_path}")
+UI_DIST_PATH = Path(__file__).parent / "src" / "ui" / "dist"
+ui_assets_path = UI_DIST_PATH / "assets"
+if ui_assets_path.exists() and ui_assets_path.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(ui_assets_path)), name="assets")
+    logger.info(f"React UI static files mounted from {ui_assets_path}")
 else:
-    logger.warning(f"React UI dist directory not found at {ui_dist_path}. Run 'npm run build' in src/ui/")
+    logger.warning(f"React UI assets directory not found at {ui_assets_path}. Run 'npm run build' in src/ui/")
 
 
 @app.get("/")
@@ -914,7 +915,7 @@ async def list_copilot_logs(limit: Optional[int] = 20):
 @app.get("/ui/{full_path:path}")
 async def serve_react_app(full_path: str = ""):
     """Serve the React UI application."""
-    ui_index_path = Path(__file__).parent / "src" / "ui" / "dist" / "index.html"
+    ui_index_path = UI_DIST_PATH / "index.html"
     
     if not ui_index_path.exists():
         return HTMLResponse(
@@ -934,7 +935,7 @@ npm run build
                 </body>
             </html>
             """,
-            status_code=503
+            status_code=404
         )
     
     return FileResponse(ui_index_path)
