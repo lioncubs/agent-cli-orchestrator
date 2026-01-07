@@ -4,7 +4,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
+from pathlib import Path
 import os
 import asyncio
 import logging
@@ -294,7 +295,8 @@ async def root():
             "POST /prompt": "Execute synchronous Copilot CLI prompt",
             "POST /prompt/async": "Execute asynchronous Copilot CLI prompt",
             "POST /prompt/stream": "Execute Copilot CLI prompt with real-time streaming output (SSE)",
-            "GET /ui": "Web interface for testing",
+            "GET /ui": "Modern React dashboard (primary UI)",
+            "GET /legacy-ui": "Legacy HTML interface (simple fallback UI)",
             "GET /streaming-test": "Streaming output test page"
         },
         "session_management": {
