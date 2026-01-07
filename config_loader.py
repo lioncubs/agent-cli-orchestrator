@@ -164,6 +164,32 @@ class Config:
     def metrics_retention_days(self) -> int:
         """Get metrics retention period in days."""
         return self.get('metrics.retention_days', 30)
+    
+    # Copilot PAT configuration
+    @property
+    def copilot_pat_enabled(self) -> bool:
+        """Check if Copilot PAT management is enabled."""
+        return self.get("copilot_pat.enabled", True)
+    
+    @property
+    def copilot_pat_validate_on_create(self) -> bool:
+        """Check if PATs should be validated on creation."""
+        return self.get("copilot_pat.validate_on_create", True)
+    
+    @property
+    def copilot_pat_max_per_user(self) -> int:
+        """Get maximum PATs per user."""
+        return self.get("copilot_pat.max_pats_per_user", 5)
+    
+    @property
+    def copilot_pat_auto_deactivate(self) -> bool:
+        """Check if PATs should auto-deactivate on validation failures."""
+        return self.get("copilot_pat.auto_deactivate_on_failures", True)
+    
+    @property
+    def copilot_pat_validation_cache_ttl(self) -> int:
+        """Get PAT validation cache TTL in seconds."""
+        return self.get("copilot_pat.validation_cache_ttl", 3600)
 
 
 # Global config instance

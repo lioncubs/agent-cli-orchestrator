@@ -73,3 +73,11 @@ metrics:
   system_metrics_interval: 60  # seconds
   cache_ttl_seconds: 300  # 5 minutes
   retention_days: 30  # How long to keep metrics data
+
+# Copilot PAT Management configuration
+copilot_pat:
+  enabled: true
+  validate_on_create: true  # Validate PAT against GitHub API when creating
+  max_pats_per_user: 5  # Maximum number of PATs per user
+  auto_deactivate_on_failures: true  # Auto-deactivate after 3 validation failures
+  validation_cache_ttl: 3600  # Cache validation results for 1 hour
