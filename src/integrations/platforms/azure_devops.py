@@ -1,5 +1,6 @@
 """Azure DevOps (Services and Server) platform integration."""
 
+import base64
 import httpx
 from typing import List, Optional
 from .base import GitPlatform, PRResult, PRInfo
@@ -97,7 +98,6 @@ class AzureDevOps(GitPlatform):
                 }
                 
                 # Azure DevOps uses Basic auth with PAT
-                import base64
                 auth_value = base64.b64encode(f":{self.token}".encode()).decode()
                 
                 response = await client.post(
@@ -156,7 +156,6 @@ class AzureDevOps(GitPlatform):
             else:
                 url = f"{self.base_url}/{project}/_apis/git/repositories/{repository}/pullrequests/{pr_id}"
             
-            import base64
             auth_value = base64.b64encode(f":{self.token}".encode()).decode()
             
             response = await client.get(
@@ -220,7 +219,6 @@ class AzureDevOps(GitPlatform):
             elif state == "merged":
                 ado_status = "completed"
             
-            import base64
             auth_value = base64.b64encode(f":{self.token}".encode()).decode()
             
             response = await client.get(
@@ -291,7 +289,6 @@ class AzureDevOps(GitPlatform):
                 "status": 1,  # Active
             }
             
-            import base64
             auth_value = base64.b64encode(f":{self.token}".encode()).decode()
             
             response = await client.post(

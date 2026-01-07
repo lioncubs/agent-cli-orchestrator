@@ -1,6 +1,7 @@
 """GitLab (Cloud and self-hosted) platform integration."""
 
 import httpx
+import urllib.parse
 from typing import List, Optional
 from .base import GitPlatform, PRResult, PRInfo
 
@@ -57,7 +58,6 @@ class GitLab(GitPlatform):
         
         try:
             # URL encode the repo path
-            import urllib.parse
             encoded_repo = urllib.parse.quote(repo, safe='')
             
             async with httpx.AsyncClient() as client:
@@ -113,7 +113,6 @@ class GitLab(GitPlatform):
     
     async def get_pull_request(self, repo: str, pr_id: str) -> PRInfo:
         """Get GitLab merge request details."""
-        import urllib.parse
         encoded_repo = urllib.parse.quote(repo, safe='')
         
         async with httpx.AsyncClient() as client:
@@ -149,7 +148,6 @@ class GitLab(GitPlatform):
         limit: int = 30,
     ) -> List[PRInfo]:
         """List GitLab merge requests."""
-        import urllib.parse
         encoded_repo = urllib.parse.quote(repo, safe='')
         
         async with httpx.AsyncClient() as client:
@@ -194,7 +192,6 @@ class GitLab(GitPlatform):
     
     async def add_pr_comment(self, repo: str, pr_id: str, body: str) -> None:
         """Add note to GitLab merge request."""
-        import urllib.parse
         encoded_repo = urllib.parse.quote(repo, safe='')
         
         async with httpx.AsyncClient() as client:

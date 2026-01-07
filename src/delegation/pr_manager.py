@@ -264,25 +264,35 @@ class PRManager:
             
         Returns:
             Dictionary with PR details
+            
+        Raises:
+            NotImplementedError: If platform doesn't support PR retrieval
         """
         platform = self._detect_platform()
-        pr_info = await platform.get_pull_request(repo_identifier, pr_id)
         
-        return {
-            "id": pr_info.id,
-            "number": pr_info.number,
-            "title": pr_info.title,
-            "body": pr_info.body,
-            "state": pr_info.state,
-            "head_branch": pr_info.head_branch,
-            "base_branch": pr_info.base_branch,
-            "url": pr_info.url,
-            "author": pr_info.author,
-            "created_at": pr_info.created_at,
-            "updated_at": pr_info.updated_at,
-            "merged_at": pr_info.merged_at,
-            "draft": pr_info.draft,
-        }
+        try:
+            pr_info = await platform.get_pull_request(repo_identifier, pr_id)
+            
+            return {
+                "id": pr_info.id,
+                "number": pr_info.number,
+                "title": pr_info.title,
+                "body": pr_info.body,
+                "state": pr_info.state,
+                "head_branch": pr_info.head_branch,
+                "base_branch": pr_info.base_branch,
+                "url": pr_info.url,
+                "author": pr_info.author,
+                "created_at": pr_info.created_at,
+                "updated_at": pr_info.updated_at,
+                "merged_at": pr_info.merged_at,
+                "draft": pr_info.draft,
+            }
+        except NotImplementedError:
+            raise NotImplementedError(
+                f"PR retrieval not supported for {platform.get_platform_name()}. "
+                "Please use the web interface of your Git hosting service to view PR details."
+            )
     
     def get_pr_status(self, worktree_path: str, pr_number: int) -> dict:
         """
