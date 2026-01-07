@@ -262,8 +262,8 @@ async def create_delegation_pr(session_id: UUID, request: CreatePRRequest):
         if not session:
             raise HTTPException(status_code=404, detail=f"Session {session_id} not found")
         
-        # Create pull request
-        session = service.create_pull_request(
+        # Create pull request (now async)
+        session = await service.create_pull_request(
             session=session,
             title=request.title,
             body=request.body,
