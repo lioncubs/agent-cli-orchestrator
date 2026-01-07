@@ -1,6 +1,6 @@
 """Authentication models."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, EmailStr
@@ -17,8 +17,8 @@ class User(BaseModel):
     git_identity: GitIdentity
     default_model: str = "gpt-4o"
     permission_tier: str = "restricted"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class UserCreate(BaseModel):
@@ -35,11 +35,11 @@ class UserCreate(BaseModel):
 class APIKey(BaseModel):
     """API key model for authentication."""
     id: UUID = Field(default_factory=uuid4)
-    key_hash: str  # SHA-256 hash, never store plaintext
+    key_hash: str  # Salted SHA-256 hash, never store plaintext
     user_id: UUID
     name: str
     scopes: List[str] = Field(default_factory=list)  # ["read", "write", "admin"]
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
 

@@ -1,11 +1,12 @@
 """Authentication service."""
 
-import hashlib
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
 from src.auth.models import User, UserCreate, APIKey, APIKeyCreate
 from src.auth.providers.api_key import APIKeyProvider
+from src.core.security import PasswordHasher, APIKeyHasher
 from src.session.models import GitIdentity
 from src.storage.base import StorageBackend
 
@@ -22,22 +23,22 @@ class AuthService:
         """
         self.storage = storage
         self.api_key_provider = APIKeyProvider()
+        self.password_hasher = PasswordHasher()
+        self.api_key_hasher = APIKeyHasher()
     
-    @staticmethod
-    def hash_password(password: str) -> str:
+    def hash_password(self, password: str) -> str:
         """
-        Hash a password using SHA-256.
+        Hash a password using bcrypt with salt.
         
         Args:
             password: The plaintext password
             
         Returns:
-            SHA-256 hash of the password
+            Bcrypt hash of the password
         """
-        return hashlib.sha256(password.encode()).hexdigest()
+        return self.password_hasher.hash_password(password)
     
-    @staticmethod
-    def verify_password(password: str, password_hash: str) -> bool:
+    def verify_password(self, password: str, password_hash: str) -> bool:
         """
         Verify a password against its hash.
         
@@ -48,7 +49,7 @@ class AuthService:
         Returns:
             True if the password matches the hash, False otherwise
         """
-        return AuthService.hash_password(password) == password_hash
+        return self.password_hasher.verify_password(password, password_hash)
     
     async def create_user(self, user_create: UserCreate) -> User:
         """
@@ -158,12 +159,12 @@ class AuthService:
             Tuple of (APIKey model, plaintext key)
             Note: The plaintext key is only returned once and should be given to the user
         """
-        # Generate plaintext key
-        plaintext_key = self.api_key_provider.generate_key()
+        # Generate plaintext key using new hasher
+        plaintext_key = self.api_key_hasher.generate_key()
         
-        # Create API key
+        # Create API key with salted hash
         api_key = APIKey(
-            key_hash=self.api_key_provider.hash_key(plaintext_key),
+            key_hash=self.api_key_hasher.hash_key(plaintext_key),
             user_id=user_id,
             name=api_key_create.name,
             scopes=api_key_create.scopes,
@@ -244,8 +245,8 @@ class AuthService:
             
             api_key = APIKey(**data)
             
-            # Verify key
-            if not self.api_key_provider.verify_key(key, api_key.key_hash):
+            # Verify key using new hasher with salt support
+            if not self.api_key_hasher.verify_key(key, api_key.key_hash):
                 continue
             
             # Check expiration
@@ -309,9 +310,8 @@ class AuthService:
             if hasattr(user, key):
                 setattr(user, key, value)
         
-        # Update timestamp
-        from datetime import datetime
-        user.updated_at = datetime.utcnow()
+        # Update timestamp with timezone-aware datetime
+        user.updated_at = datetime.now(timezone.utc)
         
         # Store updated user
         await self.storage.set(f"users/{user.id}", user.model_dump())

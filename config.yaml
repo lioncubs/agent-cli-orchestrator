@@ -17,6 +17,47 @@ server:
   # See API.md for security recommendations
   host: "127.0.0.1"
   port: 8000
+  # TLS/HTTPS configuration (enable for production)
+  ssl_enabled: false
+  ssl_certfile: null  # Path to SSL certificate file
+  ssl_keyfile: null   # Path to SSL private key file
+
+# Security configuration
+security:
+  # Authentication settings
+  auth:
+    enabled: true
+    require_auth: false  # Set to true to require auth on all endpoints
+    exclude_paths:
+      - "/docs"
+      - "/redoc"
+      - "/openapi.json"
+      - "/health"
+      - "/_health"
+  
+  # Rate limiting settings
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+    burst: 10
+  
+  # Security headers
+  headers:
+    enable_hsts: false  # Enable for HTTPS only
+    hsts_max_age: 31536000  # 1 year
+    enable_csp: true
+  
+  # CORS settings
+  cors:
+    enabled: true
+    allow_origins:
+      - "http://localhost"
+      - "http://localhost:8000"
+      - "http://localhost:3000"
+      - "http://127.0.0.1"
+      - "http://127.0.0.1:8000"
+      - "http://127.0.0.1:3000"
+    allow_credentials: true
   
 # Copilot CLI configuration
 copilot:

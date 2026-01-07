@@ -12,6 +12,7 @@ mcp>=1.0.0
 
 # Security dependencies
 cryptography>=41.0.0
+bcrypt>=4.1.0
 
 # Testing dependencies
 pytest>=7.4.3
