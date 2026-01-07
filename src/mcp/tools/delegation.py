@@ -148,22 +148,23 @@ class DelegationTools:
                     session_id=input_data.session_id
                 ).model_dump()
             
-            result = await self.delegation_service.create_pull_request(
-                session_id=input_data.session_id,
-                title=input_data.title,
+            # Create PR using delegation service (expects session object)
+            updated_session = await self.delegation_service.create_pull_request(
+                session=session,
+                title=input_data.title or f"[Agent] Delegation from session {str(input_data.session_id)[:8]}",
                 body=input_data.body,
                 draft=input_data.draft
             )
             
             return PRResult(
                 session_id=input_data.session_id,
-                pr_url=result["pr_url"],
-                pr_number=result.get("pr_number"),
-                title=result["title"],
-                body=result["body"],
-                draft=result["draft"],
-                head_branch=result["head_branch"],
-                base_branch=result["base_branch"]
+                pr_url=updated_session.pr_url or "",
+                pr_number=None,  # Will be in pr_url if available
+                title=input_data.title or "",
+                body=input_data.body or "",
+                draft=input_data.draft,
+                head_branch=updated_session.session_branch or "",
+                base_branch=updated_session.base_branch or ""
             ).model_dump()
             
         except Exception as e:

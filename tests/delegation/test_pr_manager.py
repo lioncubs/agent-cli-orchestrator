@@ -3,13 +3,14 @@
 import pytest
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 from uuid import uuid4
 
 from src.delegation.pr_manager import PRManager
 from src.delegation.worktree_manager import WorktreeManager
 from src.delegation.commit_manager import CommitManager
 from src.session.models import GitIdentity
+from src.integrations.platforms.base import PRResult
 
 
 class TestPRManager:
@@ -71,6 +72,156 @@ class TestPRManager:
         
         # Cleanup
         wt_manager.cleanup_worktree(wt_path, delete_branch=True)
+    
+    @pytest.mark.asyncio
+    async def test_platform_detection(self, pr_manager):
+        """Test that platform detection works."""
+        with patch.object(pr_manager, '_get_remote_url', return_value='git@gitlab.com:user/repo.git'):
+            platform = pr_manager._detect_platform()
+            assert platform.get_platform_name() in ["GitLab", "GitLab (self-hosted)"]
+    
+    @pytest.mark.asyncio
+    async def test_set_platform_config(self, pr_manager):
+        """Test setting platform configuration."""
+        config = {"token": "test-token"}
+        pr_manager.set_platform_config(config)
+        assert pr_manager._platform_config == config
+        assert pr_manager._platform is None  # Should reset platform
+    
+    @pytest.mark.asyncio
+    async def test_extract_repo_identifier_gitlab(self, pr_manager):
+        """Test extracting repo identifier for GitLab."""
+        from src.integrations.platforms.gitlab import GitLab
+        
+        platform = GitLab()
+        
+        # HTTPS URL
+        repo = pr_manager._extract_repo_identifier(
+            "https://gitlab.com/namespace/project.git",
+            platform
+        )
+        assert repo == "namespace/project"
+        
+        # SSH URL
+        repo = pr_manager._extract_repo_identifier(
+            "git@gitlab.com:namespace/project.git",
+            platform
+        )
+        assert repo == "namespace/project"
+    
+    @pytest.mark.asyncio
+    async def test_extract_repo_identifier_azure_devops(self, pr_manager):
+        """Test extracting repo identifier for Azure DevOps."""
+        from src.integrations.platforms.azure_devops import AzureDevOps
+        
+        platform = AzureDevOps(organization="myorg")
+        
+        # HTTPS URL
+        repo = pr_manager._extract_repo_identifier(
+            "https://dev.azure.com/myorg/myproject/_git/myrepo",
+            platform
+        )
+        assert repo == "myproject/myrepo"
+        
+        # SSH URL
+        repo = pr_manager._extract_repo_identifier(
+            "git@ssh.dev.azure.com:v3/myorg/myproject/myrepo",
+            platform
+        )
+        assert repo == "myproject/myrepo"
+    
+    @pytest.mark.asyncio
+    @patch('subprocess.run')
+    async def test_create_pull_request_with_platform_api(self, mock_run, pr_manager, worktree_with_commit):
+        """Test creating PR using platform API."""
+        wt_path, branch_name = worktree_with_commit
+        
+        # Mock successful push
+        mock_run.return_value = MagicMock(stdout="", stderr="", returncode=0)
+        
+        # Mock platform detection and PR creation
+        mock_platform = MagicMock()
+        mock_platform.get_platform_name.return_value = "GitLab"
+        mock_platform.create_pull_request = AsyncMock(return_value=PRResult(
+            status="success",
+            pr_id="123",
+            pr_number=123,
+            pr_url="https://gitlab.com/user/repo/-/merge_requests/123",
+            message="MR created successfully"
+        ))
+        
+        with patch.object(pr_manager, '_detect_platform', return_value=mock_platform):
+            with patch.object(pr_manager, '_get_remote_url', return_value='git@gitlab.com:user/repo.git'):
+                result = await pr_manager.create_pull_request(
+                    worktree_path=wt_path,
+                    branch_name=branch_name,
+                    base_branch="main",
+                    title="Test MR",
+                    body="Test MR body",
+                    repo_identifier="user/repo"
+                )
+        
+        assert result["status"] == "success"
+        assert result["pr_url"] == "https://gitlab.com/user/repo/-/merge_requests/123"
+        assert result["platform"] == "GitLab"
+    
+    @pytest.mark.asyncio
+    @patch('subprocess.run')
+    async def test_create_pull_request_manual_fallback(self, mock_run, pr_manager, worktree_with_commit):
+        """Test creating PR falls back to manual instructions."""
+        wt_path, branch_name = worktree_with_commit
+        
+        # Mock successful push
+        mock_run.return_value = MagicMock(stdout="", stderr="", returncode=0)
+        
+        # Mock platform detection (generic platform)
+        mock_platform = MagicMock()
+        mock_platform.get_platform_name.return_value = "Generic Git Platform"
+        mock_platform.create_pull_request = AsyncMock(return_value=PRResult(
+            status="manual",
+            message="Manual PR creation required",
+            instructions="Push branch and create PR manually..."
+        ))
+        
+        with patch.object(pr_manager, '_detect_platform', return_value=mock_platform):
+            with patch.object(pr_manager, '_get_remote_url', return_value='git@custom.com:user/repo.git'):
+                result = await pr_manager.create_pull_request(
+                    worktree_path=wt_path,
+                    branch_name=branch_name,
+                    base_branch="main",
+                    title="Test PR",
+                    repo_identifier="user/repo"
+                )
+        
+        assert result["status"] == "manual"
+        assert result["instructions"] is not None
+        assert result["platform"] == "Generic Git Platform"
+    
+    @pytest.mark.asyncio
+    async def test_get_pr_details(self, pr_manager):
+        """Test getting PR details via platform API."""
+        from src.integrations.platforms.base import PRInfo
+        
+        mock_platform = MagicMock()
+        mock_platform.get_pull_request = AsyncMock(return_value=PRInfo(
+            id="123",
+            number=123,
+            title="Test PR",
+            body="Test description",
+            state="open",
+            head_branch="feature",
+            base_branch="main",
+            url="https://gitlab.com/user/repo/-/merge_requests/123",
+            author="testuser"
+        ))
+        
+        with patch.object(pr_manager, '_detect_platform', return_value=mock_platform):
+            details = await pr_manager.get_pr_details("user/repo", "123")
+        
+        assert details["id"] == "123"
+        assert details["number"] == 123
+        assert details["title"] == "Test PR"
+        assert details["state"] == "open"
     
     def test_check_gh_cli_available_not_installed(self, pr_manager):
         """Test checking for gh CLI when not installed."""
@@ -154,86 +305,10 @@ class TestPRManager:
         push_calls = [call for call in mock_run.call_args_list if 'push' in str(call)]
         assert any('--force' in str(call) for call in push_calls)
     
-    @patch('subprocess.run')
-    def test_create_pull_request_success(self, mock_run, pr_manager, worktree_with_commit):
-        """Test creating a pull request successfully."""
-        wt_path, branch_name = worktree_with_commit
-        
-        # Mock successful push and PR creation
-        def side_effect(*args, **kwargs):
-            cmd = args[0]
-            if 'push' in cmd:
-                return MagicMock(stdout="", stderr="", returncode=0)
-            elif 'pr' in cmd and 'create' in cmd:
-                return MagicMock(
-                    stdout="https://github.com/test/repo/pull/123",
-                    stderr="",
-                    returncode=0
-                )
-            return MagicMock(stdout="", stderr="", returncode=0)
-        
-        mock_run.side_effect = side_effect
-        
-        pr_url = pr_manager.create_pull_request(
-            worktree_path=wt_path,
-            branch_name=branch_name,
-            base_branch="main",
-            title="Test PR",
-            body="Test PR body"
-        )
-        
-        assert pr_url == "https://github.com/test/repo/pull/123"
-    
-    @patch('subprocess.run')
-    def test_create_pull_request_draft(self, mock_run, pr_manager, worktree_with_commit):
-        """Test creating a draft pull request."""
-        wt_path, branch_name = worktree_with_commit
-        
-        def side_effect(*args, **kwargs):
-            cmd = args[0]
-            if 'push' in cmd:
-                return MagicMock(stdout="", stderr="", returncode=0)
-            elif 'pr' in cmd and 'create' in cmd:
-                # Verify --draft is included
-                assert '--draft' in cmd
-                return MagicMock(
-                    stdout="https://github.com/test/repo/pull/123",
-                    stderr="",
-                    returncode=0
-                )
-            return MagicMock(stdout="", stderr="", returncode=0)
-        
-        mock_run.side_effect = side_effect
-        
-        pr_manager.create_pull_request(
-            worktree_path=wt_path,
-            branch_name=branch_name,
-            base_branch="main",
-            title="Test PR",
-            draft=True
-        )
-    
-    @patch('subprocess.run')
-    def test_create_pull_request_push_failure(self, mock_run, pr_manager, worktree_with_commit):
-        """Test PR creation when push fails."""
-        wt_path, branch_name = worktree_with_commit
-        
-        # Mock failed push
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, ['git', 'push'], stderr="Push failed"
-        )
-        
-        with pytest.raises(RuntimeError, match="Failed to push branch"):
-            pr_manager.create_pull_request(
-                worktree_path=wt_path,
-                branch_name=branch_name,
-                base_branch="main",
-                title="Test PR"
-            )
     
     @patch('subprocess.run')
     def test_get_pr_status(self, mock_run, pr_manager, worktree_with_commit):
-        """Test getting PR status."""
+        """Test getting PR status (legacy GitHub CLI method)."""
         wt_path, _ = worktree_with_commit
         
         mock_run.return_value = MagicMock(
@@ -250,7 +325,7 @@ class TestPRManager:
     
     @patch('subprocess.run')
     def test_get_pr_status_failure(self, mock_run, pr_manager, worktree_with_commit):
-        """Test getting PR status when it fails."""
+        """Test getting PR status when it fails (legacy GitHub CLI method)."""
         wt_path, _ = worktree_with_commit
         
         mock_run.side_effect = subprocess.CalledProcessError(
@@ -259,3 +334,4 @@ class TestPRManager:
         
         with pytest.raises(RuntimeError, match="Failed to get PR status"):
             pr_manager.get_pr_status(wt_path, 999)
+

@@ -207,7 +207,8 @@ class TestDelegationService:
     
     @patch('src.delegation.pr_manager.PRManager.create_pull_request')
     @patch('src.delegation.pr_manager.PRManager.push_branch')
-    def test_create_pull_request(
+    @pytest.mark.asyncio
+    async def test_create_pull_request(
         self,
         mock_push,
         mock_create_pr,
@@ -223,11 +224,21 @@ class TestDelegationService:
         # Commit changes
         session = service.commit_changes(session)
         
-        # Mock PR creation
-        mock_create_pr.return_value = "https://github.com/test/repo/pull/123"
+        # Mock PR creation - returns a dict now
+        from unittest.mock import AsyncMock
+        async def async_pr_create(*args, **kwargs):
+            return {
+                "status": "success",
+                "pr_url": "https://github.com/test/repo/pull/123",
+                "pr_id": "123",
+                "pr_number": 123,
+                "message": "PR created successfully",
+                "platform": "GitHub"
+            }
+        mock_create_pr.side_effect = async_pr_create
         
         # Create PR
-        result = service.create_pull_request(
+        result = await service.create_pull_request(
             session=session,
             title="Test PR",
             body="Test description"
@@ -241,7 +252,8 @@ class TestDelegationService:
     
     @patch('src.delegation.pr_manager.PRManager.create_pull_request')
     @patch('src.delegation.pr_manager.PRManager.push_branch')
-    def test_create_pull_request_auto_body(
+    @pytest.mark.asyncio
+    async def test_create_pull_request_auto_body(
         self,
         mock_push,
         mock_create_pr,
@@ -254,10 +266,20 @@ class TestDelegationService:
         test_file.write_text("Test content")
         session = service.commit_changes(session)
         
-        mock_create_pr.return_value = "https://github.com/test/repo/pull/123"
+        from unittest.mock import AsyncMock
+        async def async_pr_create(*args, **kwargs):
+            return {
+                "status": "success",
+                "pr_url": "https://github.com/test/repo/pull/123",
+                "pr_id": "123",
+                "pr_number": 123,
+                "message": "PR created successfully",
+                "platform": "GitHub"
+            }
+        mock_create_pr.side_effect = async_pr_create
         
         # Create PR without body
-        result = service.create_pull_request(session=session, title="Test PR")
+        result = await service.create_pull_request(session=session, title="Test PR")
         
         # Verify auto-generated body was created
         mock_create_pr.assert_called_once()
@@ -268,12 +290,13 @@ class TestDelegationService:
         # Cleanup
         service.abandon_delegation(session)
     
-    def test_create_pull_request_no_commit(self, service, delegation_session):
+    @pytest.mark.asyncio
+    async def test_create_pull_request_no_commit(self, service, delegation_session):
         """Test creating PR without commits fails."""
         session = service.initialize_delegation(delegation_session)
         
         with pytest.raises(ValueError, match="no commits"):
-            service.create_pull_request(session=session, title="Test PR")
+            await service.create_pull_request(session=session, title="Test PR")
         
         # Cleanup
         service.abandon_delegation(session)

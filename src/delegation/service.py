@@ -162,12 +162,13 @@ class DelegationService:
         
         return session
     
-    def create_pull_request(
+    async def create_pull_request(
         self,
         session: Session,
         title: str,
         body: Optional[str] = None,
-        draft: bool = False
+        draft: bool = False,
+        repo_identifier: Optional[str] = None,
     ) -> Session:
         """
         Create pull request for delegation changes.
@@ -177,6 +178,7 @@ class DelegationService:
             title: PR title
             body: PR description (auto-generated if not provided)
             draft: If True, create as draft PR
+            repo_identifier: Repository identifier (auto-detected if not provided)
             
         Returns:
             Updated session with PR information
@@ -207,19 +209,20 @@ class DelegationService:
         
         # Create pull request
         try:
-            pr_url = self.pr_manager.create_pull_request(
+            pr_result = await self.pr_manager.create_pull_request(
                 worktree_path=session.worktree_path,
                 branch_name=session.session_branch,
                 base_branch=session.base_branch,
                 title=title,
                 body=body,
-                draft=draft
+                draft=draft,
+                repo_identifier=repo_identifier,
             )
         except RuntimeError as e:
             raise RuntimeError(f"Failed to create pull request: {e}") from e
         
         # Update session with PR information
-        session.pr_url = pr_url
+        session.pr_url = pr_result.get("pr_url")
         session.status = SessionStatus.PR_CREATED
         session.last_activity_at = datetime.utcnow()
         

@@ -268,8 +268,18 @@ class TestDelegationRoutes:
         session = delegation_service.commit_changes(session)
         session_id = session.id
         
-        # Mock PR creation
-        mock_create_pr.return_value = "https://github.com/test/repo/pull/123"
+        # Mock PR creation - returns a dict now
+        from unittest.mock import AsyncMock
+        async def async_pr_create(*args, **kwargs):
+            return {
+                "status": "success",
+                "pr_url": "https://github.com/test/repo/pull/123",
+                "pr_id": "123",
+                "pr_number": 123,
+                "message": "PR created successfully",
+                "platform": "GitHub"
+            }
+        mock_create_pr.side_effect = async_pr_create
         
         # Create PR
         response = client.post(
@@ -316,7 +326,17 @@ class TestDelegationRoutes:
         session = delegation_service.commit_changes(session)
         session_id = session.id
         
-        mock_create_pr.return_value = "https://github.com/test/repo/pull/123"
+        from unittest.mock import AsyncMock
+        async def async_pr_create(*args, **kwargs):
+            return {
+                "status": "success",
+                "pr_url": "https://github.com/test/repo/pull/123",
+                "pr_id": "123",
+                "pr_number": 123,
+                "message": "PR created successfully",
+                "platform": "GitHub"
+            }
+        mock_create_pr.side_effect = async_pr_create
         
         # Create draft PR
         response = client.post(
