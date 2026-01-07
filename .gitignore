@@ -53,3 +53,6 @@ worktrees/
 # Config overrides
 config.local.yaml
 MagicMock/
+
+# Authentication data storage
+data/
