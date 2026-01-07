@@ -12,7 +12,6 @@ from src.auth.models import (
     CopilotPATResponse
 )
 from src.api.middleware.auth import get_current_user
-from src.storage.encrypted import EncryptionService
 
 router = APIRouter(prefix="/api/copilot/pats", tags=["Copilot PAT"])
 

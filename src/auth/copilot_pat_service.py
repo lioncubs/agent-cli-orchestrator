@@ -110,7 +110,6 @@ class CopilotPATService:
             await session.commit()
         
         # Audit log
-        logger.info(f"PAT operation completed")
         
         logger.info(f"Created Copilot PAT {pat_id} for user {user_id}")
         
@@ -215,7 +214,6 @@ class CopilotPATService:
                 return None
             
             # Audit log
-            logger.info(f"PAT operation completed")
             
             return await self.get_pat(pat_id, user_id)
     
@@ -255,7 +253,6 @@ class CopilotPATService:
                 return False
             
             # Audit log
-            logger.info(f"PAT operation completed")
             
             logger.info(f"Revoked Copilot PAT {pat_id} for user {user_id}")
             
@@ -285,7 +282,6 @@ class CopilotPATService:
                 return False
             
             # Audit log
-            logger.info(f"PAT operation completed")
             
             logger.info(f"Deleted Copilot PAT {pat_id} for user {user_id}")
             
@@ -351,9 +347,8 @@ class CopilotPATService:
                 )
                 
                 if response.status_code == 200:
-                    # Check if PAT has copilot access
-                    scopes = response.headers.get("X-OAuth-Scopes", "")
-                    logger.info(f"GitHub PAT validation successful. Scopes: {scopes}")
+                    # Successfully validated
+                    logger.info(f"GitHub PAT validation successful")
                     return True
                 else:
                     logger.warning(f"GitHub PAT validation failed: {response.status_code}")
@@ -415,7 +410,6 @@ class CopilotPATService:
             await session.commit()
         
         # Audit log
-        logger.info(f"PAT operation completed")
         
         return is_valid
     
