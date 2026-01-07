@@ -278,15 +278,20 @@ async def test_create_pr_success(delegation_tools, mock_session_store, mock_dele
     )
     mock_session_store.get_session.return_value = mock_session
     
-    mock_delegation_service.create_pull_request.return_value = {
-        "pr_url": "https://github.com/test/repo/pull/123",
-        "pr_number": 123,
-        "title": "Fix authentication bug",
-        "body": "This PR fixes the auth bug",
-        "draft": False,
-        "head_branch": "agent/alice/abc-fix",
-        "base_branch": "main"
-    }
+    # Mock delegation service to return updated session with PR URL
+    mock_updated_session = Session(
+        id=session_id,
+        type=SessionType.DELEGATION,
+        status=SessionStatus.PR_CREATED,
+        repo_name="test-repo",
+        user_id="alice",
+        created_at=datetime.now(),
+        last_activity_at=datetime.now(),
+        pr_url="https://github.com/test/repo/pull/123",
+        session_branch="agent/alice/abc-fix",
+        base_branch="main"
+    )
+    mock_delegation_service.create_pull_request.return_value = mock_updated_session
     
     input_data = CreatePRInput(
         session_id=session_id,
@@ -299,8 +304,7 @@ async def test_create_pr_success(delegation_tools, mock_session_store, mock_dele
     
     assert result is not None
     assert result["pr_url"] == "https://github.com/test/repo/pull/123"
-    assert result["pr_number"] == 123
-    assert result["title"] == "Fix authentication bug"
+    assert result["head_branch"] == "agent/alice/abc-fix"
     mock_delegation_service.create_pull_request.assert_called_once()
 
 
@@ -319,15 +323,20 @@ async def test_create_pr_as_draft(delegation_tools, mock_session_store, mock_del
     )
     mock_session_store.get_session.return_value = mock_session
     
-    mock_delegation_service.create_pull_request.return_value = {
-        "pr_url": "https://github.com/test/repo/pull/124",
-        "pr_number": 124,
-        "title": "WIP: New feature",
-        "body": "Work in progress",
-        "draft": True,
-        "head_branch": "agent/alice/abc-wip",
-        "base_branch": "main"
-    }
+    # Mock delegation service to return updated session
+    mock_updated_session = Session(
+        id=session_id,
+        type=SessionType.DELEGATION,
+        status=SessionStatus.PR_CREATED,
+        repo_name="test-repo",
+        user_id="alice",
+        created_at=datetime.now(),
+        last_activity_at=datetime.now(),
+        pr_url="https://github.com/test/repo/pull/124",
+        session_branch="agent/alice/abc-wip",
+        base_branch="main"
+    )
+    mock_delegation_service.create_pull_request.return_value = mock_updated_session
     
     input_data = CreatePRInput(
         session_id=session_id,

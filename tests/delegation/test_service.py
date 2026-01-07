@@ -290,12 +290,13 @@ class TestDelegationService:
         # Cleanup
         service.abandon_delegation(session)
     
-    def test_create_pull_request_no_commit(self, service, delegation_session):
+    @pytest.mark.asyncio
+    async def test_create_pull_request_no_commit(self, service, delegation_session):
         """Test creating PR without commits fails."""
         session = service.initialize_delegation(delegation_session)
         
         with pytest.raises(ValueError, match="no commits"):
-            service.create_pull_request(session=session, title="Test PR")
+            await service.create_pull_request(session=session, title="Test PR")
         
         # Cleanup
         service.abandon_delegation(session)
