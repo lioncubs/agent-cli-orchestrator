@@ -1234,3 +1234,242 @@ metrics:
 
 For more details, see [PHASE10_SUMMARY.md](PHASE10_SUMMARY.md).
 
+---
+
+## Copilot PAT Management
+
+The Copilot PAT (Personal Access Token) management endpoints allow users to securely store and manage GitHub Copilot Personal Access Tokens for authenticated Copilot CLI operations.
+
+### Create PAT
+
+#### POST `/api/copilot/pats`
+
+Create a new Copilot Personal Access Token.
+
+**Request Body:**
+```json
+{
+  "pat": "ghp_1234567890abcdefghijklmnopqrstuvwxyz",
+  "label": "Work Laptop",
+  "expires_at": "2027-01-07T00:00:00Z"
+}
+```
+
+**Query Parameters:**
+- `validate` (optional, boolean): Whether to validate PAT against GitHub API (default: true)
+
+**Response:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "123e4567-e89b-12d3-a456-426614174000",
+  "label": "Work Laptop",
+  "scopes": ["copilot"],
+  "created_at": "2026-01-07T08:30:00Z",
+  "expires_at": "2027-01-07T00:00:00Z",
+  "last_used_at": null,
+  "last_validated_at": "2026-01-07T08:30:00Z",
+  "is_active": true,
+  "validation_failures": 0,
+  "revoked_at": null,
+  "revoked_reason": null
+}
+```
+
+**Status Codes:**
+- `201 Created`: PAT created successfully
+- `400 Bad Request`: Invalid PAT or validation failed
+- `401 Unauthorized`: Authentication required
+- `500 Internal Server Error`: Server error
+
+**Security Note:** The PAT value is encrypted at rest and never returned in API responses.
+
+---
+
+### List PATs
+
+#### GET `/api/copilot/pats`
+
+List all PATs for the current user.
+
+**Query Parameters:**
+- `include_inactive` (optional, boolean): Include inactive/revoked PATs (default: false)
+
+**Response:**
+```json
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "123e4567-e89b-12d3-a456-426614174000",
+    "label": "Work Laptop",
+    "scopes": ["copilot"],
+    "created_at": "2026-01-07T08:30:00Z",
+    "expires_at": "2027-01-07T00:00:00Z",
+    "last_used_at": "2026-01-07T09:15:00Z",
+    "last_validated_at": "2026-01-07T08:30:00Z",
+    "is_active": true,
+    "validation_failures": 0,
+    "revoked_at": null,
+    "revoked_reason": null
+  }
+]
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `401 Unauthorized`: Authentication required
+- `500 Internal Server Error`: Server error
+
+---
+
+### Get PAT
+
+#### GET `/api/copilot/pats/{pat_id}`
+
+Get details of a specific PAT.
+
+**Path Parameters:**
+- `pat_id` (UUID): PAT identifier
+
+**Response:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "123e4567-e89b-12d3-a456-426614174000",
+  "label": "Work Laptop",
+  "scopes": ["copilot"],
+  "created_at": "2026-01-07T08:30:00Z",
+  "expires_at": "2027-01-07T00:00:00Z",
+  "last_used_at": "2026-01-07T09:15:00Z",
+  "last_validated_at": "2026-01-07T08:30:00Z",
+  "is_active": true,
+  "validation_failures": 0,
+  "revoked_at": null,
+  "revoked_reason": null
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `401 Unauthorized`: Authentication required
+- `404 Not Found`: PAT not found
+- `500 Internal Server Error`: Server error
+
+---
+
+### Update PAT
+
+#### PUT `/api/copilot/pats/{pat_id}`
+
+Update a PAT's label or status.
+
+**Path Parameters:**
+- `pat_id` (UUID): PAT identifier
+
+**Request Body:**
+```json
+{
+  "label": "Updated Label",
+  "is_active": false
+}
+```
+
+**Response:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": "123e4567-e89b-12d3-a456-426614174000",
+  "label": "Updated Label",
+  "scopes": ["copilot"],
+  "created_at": "2026-01-07T08:30:00Z",
+  "expires_at": "2027-01-07T00:00:00Z",
+  "last_used_at": "2026-01-07T09:15:00Z",
+  "last_validated_at": "2026-01-07T08:30:00Z",
+  "is_active": false,
+  "validation_failures": 0,
+  "revoked_at": null,
+  "revoked_reason": null
+}
+```
+
+**Status Codes:**
+- `200 OK`: Updated successfully
+- `401 Unauthorized`: Authentication required
+- `404 Not Found`: PAT not found
+- `500 Internal Server Error`: Server error
+
+---
+
+### Revoke PAT
+
+#### DELETE `/api/copilot/pats/{pat_id}`
+
+Revoke a PAT (soft delete - marks as inactive).
+
+**Path Parameters:**
+- `pat_id` (UUID): PAT identifier
+
+**Query Parameters:**
+- `reason` (optional, string): Reason for revocation
+
+**Response:**
+- `204 No Content`: Revoked successfully
+
+**Status Codes:**
+- `204 No Content`: Revoked successfully
+- `401 Unauthorized`: Authentication required
+- `404 Not Found`: PAT not found
+- `500 Internal Server Error`: Server error
+
+---
+
+### Validate PAT
+
+#### POST `/api/copilot/pats/{pat_id}/validate`
+
+Validate a PAT against GitHub API.
+
+**Path Parameters:**
+- `pat_id` (UUID): PAT identifier
+
+**Response:**
+```json
+{
+  "is_valid": true,
+  "message": "PAT is valid"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Validation completed
+- `401 Unauthorized`: Authentication required
+- `500 Internal Server Error`: Server error
+
+**Note:** After 3 consecutive validation failures, the PAT will be automatically deactivated.
+
+---
+
+### PAT Security Features
+
+- **Encryption at Rest**: All PATs are encrypted using Fernet encryption before storage
+- **Hashing**: SHA-256 hashes are stored for validation without exposing the token
+- **Audit Logging**: All PAT operations are logged for security auditing
+- **Automatic Deactivation**: PATs are auto-deactivated after 3 validation failures
+- **Expiration Tracking**: Support for token expiration dates
+- **User Isolation**: Users can only access their own PATs
+
+### Configuration
+
+Configure PAT management in `config.yaml`:
+
+```yaml
+copilot_pat:
+  enabled: true
+  validate_on_create: true
+  max_pats_per_user: 5
+  auto_deactivate_on_failures: true
+  validation_cache_ttl: 3600
+```
+
+For implementation details, see [PHASE11_SUMMARY.md](PHASE11_SUMMARY.md).
+

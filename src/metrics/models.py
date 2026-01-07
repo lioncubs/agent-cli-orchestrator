@@ -78,3 +78,30 @@ class AnalyticsCache(Base):
     cache_value = Column(Text, nullable=False)
     computed_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     expires_at = Column(DateTime, nullable=True, index=True)
+
+
+class CopilotPAT(Base):
+    """Model for storing GitHub Copilot Personal Access Tokens."""
+    
+    __tablename__ = "copilot_pats"
+    
+    id = Column(String(36), primary_key=True)  # UUID
+    user_id = Column(String(36), nullable=False, index=True)  # UUID
+    pat_encrypted = Column(Text, nullable=False)  # Encrypted PAT
+    pat_hash = Column(String(64), nullable=False)  # SHA-256 hash for validation
+    label = Column(String(100), nullable=False)  # User-defined label
+    scopes = Column(String(255), nullable=True)  # Comma-separated scopes
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)  # Token expiration
+    last_used_at = Column(DateTime, nullable=True)
+    last_validated_at = Column(DateTime, nullable=True)
+    is_active = Column(Integer, nullable=False, default=1)  # SQLite uses INTEGER for boolean
+    validation_failures = Column(Integer, nullable=False, default=0)
+    revoked_at = Column(DateTime, nullable=True)
+    revoked_reason = Column(String(255), nullable=True)
+    
+    # Indexes for common queries
+    __table_args__ = (
+        Index('idx_user_active', 'user_id', 'is_active'),
+        Index('idx_user_created', 'user_id', 'created_at'),
+    )

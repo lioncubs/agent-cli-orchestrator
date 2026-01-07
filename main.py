@@ -58,6 +58,9 @@ from src.metrics.database import get_db_manager
 from src.metrics.middleware import MetricsMiddleware
 from src.api.routes.metrics import init_metrics_routes
 
+# Import Copilot PAT components
+from src.api.routes.copilot_pat import init_copilot_pat_routes
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -318,6 +321,11 @@ app.include_router(auth_router)
 if config.metrics_enabled:
     init_metrics_routes(app)
     logger.info("Metrics and analytics routes initialized")
+
+# Initialize and include Copilot PAT routes
+if config.copilot_pat_enabled:
+    init_copilot_pat_routes(app)
+    logger.info("Copilot PAT routes initialized")
 
 # Mount MCP server at /mcp endpoint
 app.mount("/mcp", mcp_server.get_app())
