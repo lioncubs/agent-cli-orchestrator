@@ -31,6 +31,9 @@ from src.api.routes.delegation import router as delegation_router, init_delegati
 from src.delegation.service import DelegationService
 from src.session.models import GitIdentity
 
+# Import authentication components
+from src.api.routes.auth import router as auth_router, init_auth_routes
+
 # Import MCP components
 from src.mcp.server import create_mcp_server
 from src.mcp.tools.query import QueryTools
@@ -189,6 +192,10 @@ app.include_router(query_router)
 init_delegation_routes(session_store, session_manager, delegation_service)
 app.include_router(delegation_router)
 
+# Initialize and include authentication routes
+init_auth_routes(storage_dir="./data/auth")
+app.include_router(auth_router)
+
 # Mount MCP server at /mcp endpoint
 app.mount("/mcp", mcp_server.get_app())
 
@@ -238,6 +245,18 @@ async def root():
             "POST /delegation/sessions/{id}/pr": "Create pull request for delegation",
             "DELETE /delegation/sessions/{id}": "Abandon delegation and cleanup",
             "GET /delegation/sessions/{id}/status": "Get delegation status"
+        },
+        "authentication": {
+            "POST /auth/register": "Register a new user",
+            "POST /auth/login": "Login with email and password",
+            "POST /auth/api-keys": "Create a new API key",
+            "GET /auth/api-keys": "List user's API keys",
+            "DELETE /auth/api-keys/{id}": "Revoke an API key",
+            "GET /auth/me": "Get current user information",
+            "PUT /auth/me": "Update user settings",
+            "POST /auth/credentials": "Add Git credentials",
+            "GET /auth/credentials": "List Git credentials (masked)",
+            "DELETE /auth/credentials/{id}": "Remove Git credentials"
         },
         "mcp_server": {
             "description": "Model Context Protocol server for AI agents",

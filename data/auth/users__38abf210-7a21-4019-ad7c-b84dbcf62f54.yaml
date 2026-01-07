@@ -1,0 +1,11 @@
+created_at: '2026-01-07T05:06:12.063105'
+default_model: gpt-4o
+display_name: Test User
+email: test@example.com
+git_identity:
+  email: test@example.com
+  name: Test User
+id: 38abf210-7a21-4019-ad7c-b84dbcf62f54
+password_hash: ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f
+permission_tier: restricted
+updated_at: '2026-01-07T05:06:12.063108'
