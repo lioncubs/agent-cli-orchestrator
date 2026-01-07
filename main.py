@@ -31,6 +31,14 @@ from src.api.routes.delegation import router as delegation_router, init_delegati
 from src.delegation.service import DelegationService
 from src.session.models import GitIdentity
 
+# Import MCP components
+from src.mcp.server import create_mcp_server
+from src.mcp.tools.query import QueryTools
+from src.mcp.tools.session import SessionTools
+from src.mcp.tools.delegation import DelegationTools
+from src.mcp.tools.repository import RepositoryTools
+from src.mcp.resources import MCPResources
+
 
 # Pydantic models
 class PromptRequest(BaseModel):
@@ -128,6 +136,41 @@ delegation_service = DelegationService(
     agent_identity=agent_identity
 )
 
+# Initialize MCP tools and server
+query_tools = QueryTools(
+    query_service=query_service,
+    research_service=research_service,
+    session_store=session_store,
+    research_store=research_store
+)
+
+session_tools = SessionTools(
+    session_manager=session_manager,
+    session_store=session_store
+)
+
+delegation_tools = DelegationTools(
+    delegation_service=delegation_service,
+    session_store=session_store
+)
+
+repository_tools = RepositoryTools(
+    session_store=session_store
+)
+
+mcp_resources = MCPResources(
+    session_store=session_store,
+    research_store=research_store
+)
+
+mcp_server = create_mcp_server(
+    query_tools=query_tools,
+    session_tools=session_tools,
+    delegation_tools=delegation_tools,
+    repository_tools=repository_tools,
+    resources=mcp_resources
+)
+
 # Initialize and include session routes
 init_session_routes(session_store, session_manager)
 app.include_router(sessions_router)
@@ -145,6 +188,9 @@ app.include_router(query_router)
 # Initialize and include delegation routes
 init_delegation_routes(session_store, session_manager, delegation_service)
 app.include_router(delegation_router)
+
+# Mount MCP server at /mcp endpoint
+app.mount("/mcp", mcp_server.get_app())
 
 
 @app.get("/")
@@ -192,6 +238,28 @@ async def root():
             "POST /delegation/sessions/{id}/pr": "Create pull request for delegation",
             "DELETE /delegation/sessions/{id}": "Abandon delegation and cleanup",
             "GET /delegation/sessions/{id}/status": "Get delegation status"
+        },
+        "mcp_server": {
+            "description": "Model Context Protocol server for AI agents",
+            "base_path": "/mcp",
+            "tools": [
+                "query - Execute read-only queries",
+                "start_research - Start research session",
+                "complete_research - Complete research and generate artifact",
+                "continue_session - Continue existing session",
+                "list_sessions - List all sessions",
+                "get_session - Get session details",
+                "close_session - Close or abandon session",
+                "start_delegation - Start delegation session",
+                "commit_changes - Commit delegation changes",
+                "create_pr - Create pull request",
+                "list_repos - List configured repositories",
+                "get_repo - Get repository details"
+            ],
+            "resources": [
+                "orchestrator://sessions - All active sessions",
+                "orchestrator://research - All research artifacts"
+            ]
         }
     }
 
