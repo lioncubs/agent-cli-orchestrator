@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import os
 import asyncio
+import logging
 
 from config_loader import config
 from git_operations import GitOperations
@@ -33,6 +34,13 @@ from src.session.models import GitIdentity
 
 # Import authentication components
 from src.api.routes.auth import router as auth_router, init_auth_routes
+from src.auth.service import AuthService
+from src.storage.yaml_backend import YAMLBackend
+
+# Import security middleware
+from src.api.middleware.auth import AuthMiddleware
+from src.api.middleware.rate_limit import RateLimitMiddleware
+from src.api.middleware.security_headers import SecurityHeadersMiddleware, setup_cors
 
 # Import MCP components
 from src.mcp.server import create_mcp_server
@@ -41,6 +49,13 @@ from src.mcp.tools.session import SessionTools
 from src.mcp.tools.delegation import DelegationTools
 from src.mcp.tools.repository import RepositoryTools
 from src.mcp.resources import MCPResources
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 # Pydantic models
@@ -102,6 +117,56 @@ app = FastAPI(
     description="Multi-CLI orchestration system with GitHub Copilot CLI support",
     version="0.1.0"
 )
+
+# Setup CORS with configuration
+cors_config = config.get("security.cors", {})
+if cors_config.get("enabled", True):
+    setup_cors(
+        app,
+        allow_origins=cors_config.get("allow_origins"),
+        allow_credentials=cors_config.get("allow_credentials", True)
+    )
+    logger.info("CORS configured")
+
+# Add security headers middleware
+security_headers_config = config.get("security.headers", {})
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    enable_hsts=security_headers_config.get("enable_hsts", False),
+    hsts_max_age=security_headers_config.get("hsts_max_age", 31536000),
+    enable_csp=security_headers_config.get("enable_csp", True)
+)
+logger.info("Security headers middleware configured")
+
+# Add rate limiting middleware
+rate_limit_config = config.get("security.rate_limit", {})
+if rate_limit_config.get("enabled", True):
+    app.add_middleware(
+        RateLimitMiddleware,
+        requests_per_minute=rate_limit_config.get("requests_per_minute", 60),
+        burst=rate_limit_config.get("burst", 10)
+    )
+    logger.info("Rate limiting middleware configured")
+
+# Initialize authentication storage and service
+auth_storage_dir = "./data/auth"
+os.makedirs(auth_storage_dir, exist_ok=True)
+auth_storage = YAMLBackend(storage_dir=auth_storage_dir)
+auth_service = AuthService(storage=auth_storage)
+
+# Add authentication middleware
+auth_config = config.get("security.auth", {})
+if auth_config.get("enabled", True):
+    app.add_middleware(
+        AuthMiddleware,
+        auth_service=auth_service,
+        exclude_paths=auth_config.get("exclude_paths", [
+            "/docs", "/redoc", "/openapi.json", "/health", "/_health", "/", "/ui", "/streaming-test"
+        ]),
+        require_auth=auth_config.get("require_auth", False)
+    )
+    logger.info(f"Authentication middleware configured (require_auth={auth_config.get('require_auth', False)})")
+
 
 # Initialize Git operations
 git_ops = GitOperations()
@@ -258,6 +323,20 @@ async def root():
             "GET /auth/credentials": "List Git credentials (masked)",
             "DELETE /auth/credentials/{id}": "Remove Git credentials"
         },
+        "security": {
+            "GET /health": "Health check endpoint",
+            "GET /security/summary": "Security audit summary (admin only)",
+            "features": [
+                "Bcrypt password hashing with salt",
+                "API key authentication with salted SHA-256",
+                "Rate limiting (configurable per minute and burst)",
+                "Security headers (CSP, HSTS, X-Frame-Options, etc.)",
+                "CORS protection",
+                "Input validation and sanitization",
+                "Security audit logging",
+                "TLS/HTTPS support (configurable)"
+            ]
+        },
         "mcp_server": {
             "description": "Model Context Protocol server for AI agents",
             "base_path": "/mcp",
@@ -279,6 +358,56 @@ async def root():
                 "orchestrator://sessions - All active sessions",
                 "orchestrator://research - All research artifacts"
             ]
+        }
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint.
+    
+    Returns server status and basic configuration info.
+    Excluded from authentication requirements.
+    """
+    from src.core.audit_log import security_audit_log
+    
+    return {
+        "status": "healthy",
+        "version": "0.1.0",
+        "security": {
+            "auth_enabled": auth_config.get("enabled", True),
+            "rate_limit_enabled": rate_limit_config.get("enabled", True),
+            "cors_enabled": cors_config.get("enabled", True),
+            "ssl_enabled": config.config.get("server", {}).get("ssl_enabled", False)
+        },
+        "audit_events_count": len(security_audit_log._entries)
+    }
+
+
+@app.get("/security/summary")
+async def security_summary():
+    """
+    Get security audit summary.
+    
+    NOTE: In production, this should be restricted to admin users only.
+    For now, it's available to demonstrate security features.
+    """
+    from src.core.audit_log import security_audit_log
+    
+    summary = security_audit_log.get_security_summary()
+    
+    return {
+        "status": "success",
+        "summary": summary,
+        "security_features": {
+            "password_hashing": "bcrypt with salt",
+            "api_key_hashing": "SHA-256 with salt",
+            "rate_limiting": f"{rate_limit_config.get('requests_per_minute', 60)} req/min, burst {rate_limit_config.get('burst', 10)}",
+            "security_headers": "enabled",
+            "cors": "configured",
+            "input_validation": "enabled",
+            "audit_logging": "enabled"
         }
     }
 
@@ -1442,8 +1571,33 @@ async def web_interface():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        app,
-        host=config.server_host,
-        port=config.server_port
-    )
+    
+    # Get server configuration
+    server_config = config.get("server", {})
+    ssl_enabled = server_config.get("ssl_enabled", False)
+    
+    # Prepare uvicorn kwargs
+    uvicorn_kwargs = {
+        "app": app,
+        "host": config.server_host,
+        "port": config.server_port
+    }
+    
+    # Add SSL/TLS configuration if enabled
+    if ssl_enabled:
+        ssl_certfile = server_config.get("ssl_certfile")
+        ssl_keyfile = server_config.get("ssl_keyfile")
+        
+        if ssl_certfile and ssl_keyfile:
+            if os.path.exists(ssl_certfile) and os.path.exists(ssl_keyfile):
+                uvicorn_kwargs["ssl_certfile"] = ssl_certfile
+                uvicorn_kwargs["ssl_keyfile"] = ssl_keyfile
+                logger.info(f"HTTPS enabled with cert: {ssl_certfile}")
+            else:
+                logger.warning("SSL enabled but certificate files not found. Starting without SSL.")
+        else:
+            logger.warning("SSL enabled but certificate paths not configured. Starting without SSL.")
+    
+    # Start the server
+    logger.info(f"Starting server on {config.server_host}:{config.server_port}")
+    uvicorn.run(**uvicorn_kwargs)

@@ -32,34 +32,38 @@ class TestAuthService:
         return AuthService(storage=storage)
     
     @pytest.mark.asyncio
-    async def test_hash_password(self):
-        """Test password hashing."""
+    async def test_hash_password(self, auth_service):
+        """Test password hashing with bcrypt."""
         password = "test_password_123"
-        hash1 = AuthService.hash_password(password)
-        hash2 = AuthService.hash_password(password)
+        hash1 = auth_service.hash_password(password)
+        hash2 = auth_service.hash_password(password)
         
-        # Same password should produce same hash
-        assert hash1 == hash2
+        # Different hashes due to different salts (bcrypt behavior)
+        assert hash1 != hash2
         
         # Hash should be different from password
         assert hash1 != password
+        
+        # Both hashes should verify correctly
+        assert auth_service.verify_password(password, hash1) is True
+        assert auth_service.verify_password(password, hash2) is True
     
     @pytest.mark.asyncio
-    async def test_verify_password_success(self):
+    async def test_verify_password_success(self, auth_service):
         """Test successful password verification."""
         password = "test_password"
-        password_hash = AuthService.hash_password(password)
+        password_hash = auth_service.hash_password(password)
         
-        assert AuthService.verify_password(password, password_hash) is True
+        assert auth_service.verify_password(password, password_hash) is True
     
     @pytest.mark.asyncio
-    async def test_verify_password_failure(self):
+    async def test_verify_password_failure(self, auth_service):
         """Test failed password verification."""
         password = "test_password"
         wrong_password = "wrong_password"
-        password_hash = AuthService.hash_password(password)
+        password_hash = auth_service.hash_password(password)
         
-        assert AuthService.verify_password(wrong_password, password_hash) is False
+        assert auth_service.verify_password(wrong_password, password_hash) is False
     
     @pytest.mark.asyncio
     async def test_create_user(self, auth_service):
