@@ -78,7 +78,8 @@ main
                                                          └──▶ phase-8-security
                                                                 └──▶ phase-9-modern-ui
                                                                        └──▶ phase-10-documentation
-                                                                              └──▶ main (final merge)
+                                                                              └──▶ phase-11-copilot-pat (TODO)
+                                                                                     └──▶ main (final merge)
 ```
 
 ---
@@ -1657,6 +1658,362 @@ done
 - [ ] Update architecture doc
 - [ ] Validate all links
 - [ ] Commit to `phase-10-documentation` branch
+
+### Phase 11: GitHub Copilot PAT Management (TODO)
+- [ ] Create PAT models with encryption
+- [ ] Implement PAT storage service
+- [ ] Implement PAT lifecycle management
+- [ ] Integrate PAT authentication with Copilot CLI
+- [ ] Create PAT API endpoints
+- [ ] Build PATManager UI component
+- [ ] Implement PAT validation against GitHub API
+- [ ] Add PAT security controls and audit logging
+- [ ] Update user onboarding for PAT setup
+- [ ] Write comprehensive tests
+- [ ] Verify 80% coverage
+- [ ] Update documentation with PAT guides
+- [ ] Commit to `phase-11-copilot-pat` branch
+
+---
+
+## Phase 11: GitHub Copilot PAT Management (TODO)
+
+**Branch:** `phase-11-copilot-pat` (from `phase-10-documentation`)
+
+### Overview
+
+This phase focuses on implementing secure handling and storage of GitHub Copilot Personal Access Tokens (PATs) for user-specific Copilot delegations. PATs are required to authenticate Copilot CLI operations on behalf of users and must be securely stored, managed, and integrated into the orchestrator workflow.
+
+### Deliverables
+
+| Component | File | Description |
+|-----------|------|-------------|
+| PAT Models | `src/auth/models.py` (extended) | CopilotPAT model with encryption |
+| PAT Storage | `src/storage/copilot_pat_store.py` | Encrypted PAT persistence |
+| PAT Service | `src/auth/copilot_pat_service.py` | PAT lifecycle management |
+| Copilot Auth | `src/integrations/copilot.py` (extended) | PAT injection for CLI |
+| API Routes | `src/api/routes/copilot_pat.py` | PAT management endpoints |
+| UI Components | `src/ui/src/components/PATManager.tsx` | User PAT management interface |
+
+### PAT Model
+
+```python
+# src/auth/models.py (extended)
+
+class CopilotPAT(BaseModel):
+    id: UUID
+    user_id: UUID
+    pat_encrypted: str  # Encrypted with Fernet
+    pat_hash: str  # SHA-256 hash for validation
+    label: str  # User-defined label (e.g., "Work", "Personal")
+    scopes: List[str] = ["copilot"]  # GitHub token scopes
+    created_at: datetime
+    expires_at: Optional[datetime]  # GitHub token expiration
+    last_used_at: Optional[datetime]
+    last_validated_at: Optional[datetime]
+    is_active: bool = True
+    validation_failures: int = 0  # Track consecutive failures
+```
+
+### Storage Strategy
+
+**Requirements:**
+- [ ] PATs MUST be encrypted at rest using Fernet encryption
+- [ ] PATs MUST be stored separately from user credentials
+- [ ] PATs MUST be validated before first use
+- [ ] PATs MUST support expiration and rotation
+- [ ] PATs MUST be associated with specific users
+- [ ] PAT storage MUST be isolated from other sensitive data
+
+**Implementation Options:**
+
+1. **File-based (Phase 11 MVP)**
+   - Encrypted YAML files in dedicated directory
+   - One file per user: `data/copilot-pats/{user_id}.enc.yaml`
+   - Uses existing `EncryptionService` from Phase 7
+   - Pros: Simple, no new dependencies
+   - Cons: Limited scalability
+
+2. **Future: Key-Value Store**
+   - Redis with encryption layer
+   - Better performance for concurrent access
+   - Built-in expiration support
+
+3. **Future: Secret Management Service**
+   - HashiCorp Vault integration
+   - AWS Secrets Manager
+   - Azure Key Vault
+   - Production-grade security
+
+### PAT Service
+
+```python
+# src/auth/copilot_pat_service.py
+
+class CopilotPATService:
+    def __init__(
+        self,
+        storage: StorageBackend,
+        encryption: EncryptionService
+    ):
+        ...
+    
+    async def add_pat(
+        self,
+        user_id: UUID,
+        pat: str,
+        label: str,
+        expires_at: Optional[datetime] = None
+    ) -> CopilotPAT:
+        """
+        Add new PAT for user.
+        - Validates PAT against GitHub API
+        - Encrypts before storage
+        - Returns PAT model (without plaintext token)
+        """
+        ...
+    
+    async def get_active_pat(
+        self,
+        user_id: UUID
+    ) -> Optional[str]:
+        """
+        Get decrypted PAT for user.
+        - Returns most recently used valid PAT
+        - Updates last_used_at
+        - Re-validates if not checked recently
+        """
+        ...
+    
+    async def validate_pat(
+        self,
+        pat: str
+    ) -> Dict[str, Any]:
+        """
+        Validate PAT with GitHub API.
+        - Checks scopes
+        - Checks expiration
+        - Returns validation result
+        """
+        ...
+    
+    async def rotate_pat(
+        self,
+        user_id: UUID,
+        old_pat_id: UUID,
+        new_pat: str
+    ) -> CopilotPAT:
+        """
+        Rotate PAT for user.
+        - Marks old PAT inactive
+        - Adds new PAT
+        - Maintains audit trail
+        """
+        ...
+    
+    async def revoke_pat(
+        self,
+        user_id: UUID,
+        pat_id: UUID
+    ) -> None:
+        """
+        Revoke PAT.
+        - Marks inactive
+        - Logs revocation
+        - Clears from cache
+        """
+        ...
+    
+    async def list_user_pats(
+        self,
+        user_id: UUID
+    ) -> List[CopilotPAT]:
+        """
+        List user's PATs (without plaintext).
+        - Returns metadata only
+        - Shows active/inactive status
+        """
+        ...
+```
+
+### Copilot CLI Integration
+
+```python
+# src/integrations/copilot.py (extended)
+
+class CopilotCLI:
+    def __init__(
+        self,
+        pat_service: Optional[CopilotPATService] = None
+    ):
+        self.pat_service = pat_service
+        ...
+    
+    async def execute_with_user_pat(
+        self,
+        prompt: str,
+        user_id: UUID,
+        options: Optional[Dict[str, Any]] = None,
+        cwd: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Execute Copilot CLI with user's PAT.
+        - Retrieves user's active PAT
+        - Sets GITHUB_TOKEN environment variable
+        - Executes command
+        - Clears token from environment
+        """
+        pat = await self.pat_service.get_active_pat(user_id)
+        if not pat:
+            raise ValueError("No active Copilot PAT found for user")
+        
+        # Execute with PAT in environment
+        env = os.environ.copy()
+        env["GITHUB_TOKEN"] = pat
+        
+        try:
+            result = await self._execute_with_env(
+                prompt, options, cwd, env
+            )
+        finally:
+            # Clear sensitive data
+            del env["GITHUB_TOKEN"]
+        
+        return result
+```
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/auth/copilot-pats` | Add new PAT for current user |
+| GET | `/auth/copilot-pats` | List user's PATs (metadata only) |
+| GET | `/auth/copilot-pats/{id}` | Get PAT details (no plaintext) |
+| POST | `/auth/copilot-pats/{id}/validate` | Manually validate PAT |
+| POST | `/auth/copilot-pats/{id}/rotate` | Rotate to new PAT |
+| DELETE | `/auth/copilot-pats/{id}` | Revoke PAT |
+| GET | `/auth/copilot-pats/status` | Check if user has active PAT |
+
+### UI Components
+
+**PATManager Component:**
+- Add new PAT with label
+- View PAT list (masked tokens)
+- Validate PAT status
+- Rotate PAT
+- Revoke PAT
+- Warning indicators for expiring/invalid PATs
+
+**Settings Integration:**
+- Add "GitHub Copilot" section to Settings page
+- Integrate PATManager component
+- Show PAT status in user profile
+- Display warnings for missing PATs
+
+### Security Requirements
+
+- [ ] **Encryption at Rest**: All PATs encrypted with Fernet
+- [ ] **No Plaintext Logging**: Never log PATs in any format
+- [ ] **Secure Transmission**: PATs only sent over HTTPS
+- [ ] **Memory Clearing**: Clear PATs from memory after use
+- [ ] **Audit Trail**: Log all PAT operations (creation, validation, rotation, revocation)
+- [ ] **Rate Limiting**: Limit PAT validation attempts
+- [ ] **Automatic Revocation**: Revoke PATs after multiple validation failures
+- [ ] **Expiration Handling**: Warn users before PAT expiration
+- [ ] **Scope Validation**: Verify PAT has required Copilot scopes
+
+### Integration Points
+
+**Phase 2 (Session Management):**
+- Store `user_pat_id` in Session model
+- Use user's PAT for session execution
+
+**Phase 4 (Delegation Mode):**
+- Require active PAT for delegations
+- Set author identity from user
+- Use PAT for Copilot CLI authentication
+
+**Phase 7 (Authentication & Storage):**
+- Leverage existing encryption service
+- Use existing storage backend interface
+- Integrate with user registry
+
+**Phase 8 (Security Hardening):**
+- Apply rate limiting to PAT endpoints
+- Add PAT operations to audit log
+- Include PAT status in security headers
+
+**Phase 9 (Modern Dashboard UI):**
+- Implement PATManager component
+- Add PAT status indicators
+- Show PAT warnings/errors
+
+### Configuration
+
+```yaml
+# config.yaml (extended)
+
+copilot:
+  enabled: true
+  timeout: 300
+  log_dir: "./logs/copilot"
+  pat_storage:
+    enabled: true
+    storage_path: "./data/copilot-pats"
+    encryption_key_env: "COPILOT_PAT_ENCRYPTION_KEY"
+    validation_interval_hours: 24
+    max_validation_failures: 3
+    warn_before_expiry_days: 7
+```
+
+### Tests
+
+| Test File | Coverage |
+|-----------|----------|
+| `tests/auth/test_copilot_pat_service.py` | PAT lifecycle, encryption |
+| `tests/storage/test_copilot_pat_store.py` | Storage operations |
+| `tests/integrations/test_copilot_auth.py` | PAT injection, CLI execution |
+| `tests/api/test_copilot_pat_routes.py` | All PAT endpoints |
+| `tests/ui/test_pat_manager.py` | UI component integration |
+| Integration test | Full flow: add PAT → delegate → execute |
+
+### Acceptance Criteria
+
+- [ ] PAT models fully defined with encryption
+- [ ] PAT storage implemented with file-based backend
+- [ ] PAT service handles full lifecycle (add, get, validate, rotate, revoke)
+- [ ] Copilot CLI integration uses user PATs
+- [ ] API endpoints functional and secured
+- [ ] UI component allows PAT management
+- [ ] All PATs encrypted at rest
+- [ ] No PATs logged in plaintext
+- [ ] Audit trail for all PAT operations
+- [ ] Validation against GitHub API works
+- [ ] Expiration warnings implemented
+- [ ] Test coverage ≥ 80%
+- [ ] Documentation updated
+- [ ] Committed and pushed
+
+### Documentation Updates
+
+- [ ] Add PAT setup guide to `docs/user-guide/copilot-pat.md`
+- [ ] Add PAT security considerations to `docs/security/pat-handling.md`
+- [ ] Update API reference with PAT endpoints
+- [ ] Add PAT troubleshooting to `docs/troubleshooting.md`
+- [ ] Update configuration schema documentation
+
+### Migration Path
+
+**For existing users:**
+1. Show banner in UI about PAT requirement
+2. Provide step-by-step PAT creation guide (link to GitHub)
+3. Allow graceful degradation (fallback to system Copilot if available)
+4. Provide migration window before enforcement
+
+**For new users:**
+1. PAT setup during onboarding
+2. Validate PAT before allowing delegations
+3. Clear error messages if PAT missing/invalid
 
 ---
 

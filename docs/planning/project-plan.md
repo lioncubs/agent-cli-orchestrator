@@ -427,6 +427,63 @@ This document outlines the development plan for the Agent CLI Orchestrator proje
 3. Database integration
 4. Plugin system foundation
 
+## TODO: GitHub Copilot PAT Management Phase
+
+### Overview
+A dedicated implementation phase to handle GitHub Copilot Personal Access Token (PAT) functionality for user-specific Copilot delegations. This phase focuses on secure storage, management, and integration of user PATs within the orchestrator application.
+
+### Key Tasks
+1. **Storage Strategy**
+   - Determine appropriate storage backend (file-based, Redis, or secret management service)
+   - Implement encrypted storage for PATs at rest
+   - Design PAT data model with encryption, validation, and expiration tracking
+   - Ensure isolation from other sensitive data
+
+2. **Security Requirements**
+   - Implement Fernet encryption for all stored PATs
+   - Ensure no PATs are logged in plaintext
+   - Add audit trail for all PAT operations
+   - Implement rate limiting for PAT validation
+   - Clear PATs from memory after use
+   - Handle automatic revocation after validation failures
+
+3. **PAT Lifecycle Management**
+   - PAT addition with validation against GitHub API
+   - PAT retrieval for authenticated Copilot CLI execution
+   - PAT validation and re-validation logic
+   - PAT rotation capability
+   - PAT revocation and cleanup
+   - Expiration warnings and handling
+
+4. **Integration Points**
+   - Integrate with Copilot CLI wrapper for authenticated execution
+   - Update session management to track user PAT usage
+   - Extend delegation mode to use user-specific PATs
+   - Add PAT management to user settings UI
+   - Create API endpoints for PAT CRUD operations
+
+5. **User Experience**
+   - Build PATManager UI component for credential management
+   - Implement PAT setup during user onboarding
+   - Provide clear error messages for missing/invalid PATs
+   - Add status indicators for PAT health
+   - Support graceful degradation when PAT unavailable
+
+### Dependencies
+- Phase 7: Authentication & Storage (encryption service, storage backend)
+- Phase 8: Security Hardening (audit logging, rate limiting)
+- Phase 9: Modern Dashboard UI (PATManager component)
+
+### Success Criteria
+- [ ] PATs encrypted at rest with no plaintext exposure
+- [ ] Secure PAT lifecycle management implemented
+- [ ] GitHub API validation working
+- [ ] Copilot CLI integration using user PATs
+- [ ] UI component for PAT management complete
+- [ ] Comprehensive audit trail for PAT operations
+- [ ] Test coverage ≥ 80%
+- [ ] User documentation complete
+
 ---
 
 **Last Updated**: December 21, 2024
