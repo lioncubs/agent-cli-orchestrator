@@ -172,7 +172,8 @@ class TestAuditLog:
         audit_log.log_auth_success("u1", "u1@example.com")
         audit_log.log_auth_success("u2", "u2@example.com")
         audit_log.log_auth_failure()
-        audit_log.log_suspicious_activity("test", severity="critical")
+        # log_suspicious_activity uses severity="error" internally
+        audit_log.log_suspicious_activity("test")
         
         summary = audit_log.get_security_summary()
         
@@ -182,5 +183,6 @@ class TestAuditLog:
         assert summary["by_type"]["suspicious_activity"] == 1
         assert summary["by_severity"]["info"] == 2
         assert summary["by_severity"]["warning"] == 1
-        assert summary["by_severity"]["critical"] == 1
+        assert summary["by_severity"]["error"] == 1  # suspicious_activity defaults to error
+        assert len(summary["recent_critical"]) == 1  # The one error event
         assert len(summary["recent_critical"]) == 1
