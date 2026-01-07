@@ -1,7 +1,8 @@
 """Main FastAPI application for agent-cli-orchestrator."""
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import os
@@ -263,6 +264,25 @@ app.include_router(auth_router)
 
 # Mount MCP server at /mcp endpoint
 app.mount("/mcp", mcp_server.get_app())
+
+# Mount frontend static files and handle SPA routing
+frontend_dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
+if os.path.exists(frontend_dist):
+    # Serve static assets first
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+    logger.info(f"Mounted frontend assets at /assets")
+    
+    # Serve index.html for the dashboard root and any dashboard routes
+    @app.get("/dashboard{path:path}", response_class=HTMLResponse)
+    async def serve_dashboard(path: str = ""):
+        """Serve React dashboard SPA."""
+        index_path = os.path.join(frontend_dist, "index.html")
+        with open(index_path, 'r') as f:
+            return f.read()
+    
+    logger.info(f"Mounted React dashboard at /dashboard from {frontend_dist}")
+else:
+    logger.warning(f"Frontend dist directory not found at {frontend_dist}. Dashboard will not be available.")
 
 
 @app.get("/")

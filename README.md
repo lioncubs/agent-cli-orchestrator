@@ -1,15 +1,18 @@
 # 🤖 Agent CLI Orchestrator
 
-A multi-CLI orchestration system with GitHub Copilot CLI support. This project provides an HTTP API and web interface for managing Git operations and executing AI-powered prompts through the GitHub Copilot CLI.
+A multi-CLI orchestration system with GitHub Copilot CLI support. This project provides an HTTP API and modern React dashboard for managing Git operations and executing AI-powered prompts through the GitHub Copilot CLI.
 
 ## 🌟 Features
 
+- **Modern React Dashboard** - Beautiful, responsive web interface at `/dashboard`
 - **HTTP REST API** - FastAPI-based server with comprehensive endpoints
 - **GitHub Copilot CLI Integration** - Execute prompts synchronously and asynchronously
 - **Git Management** - Branch switching and worktree management
-- **Web Interface** - Interactive UI for testing all features
+- **Real-time Streaming** - Server-Sent Events (SSE) for live Copilot output
+- **Web Interface** - Legacy interactive UI for testing all features at `/ui`
 - **Docker Support** - Containerized deployment with pre-installed dependencies
 - **YAML Configuration** - Flexible configuration system
+- **Security Hardening** - Authentication, rate limiting, audit logging
 
 ## 📋 Prerequisites
 
@@ -182,8 +185,9 @@ gh copilot suggest "How do I list all files in a directory recursively?"
    ```
 
 5. **Access the application**
+   - Modern Dashboard: http://localhost:8000/dashboard
    - API Documentation: http://localhost:8000/docs
-   - Web Interface: http://localhost:8000/ui
+   - Legacy Web Interface: http://localhost:8000/ui
    - API Root: http://localhost:8000/
 
 ### Docker Deployment
