@@ -1,9 +1,11 @@
 """Main FastAPI application for agent-cli-orchestrator."""
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
+from pathlib import Path
 import os
 import asyncio
 import logging
@@ -264,6 +266,14 @@ app.include_router(auth_router)
 # Mount MCP server at /mcp endpoint
 app.mount("/mcp", mcp_server.get_app())
 
+# Mount React UI static files
+ui_dist_path = Path(__file__).parent / "src" / "ui" / "dist"
+if ui_dist_path.exists():
+    app.mount("/assets", StaticFiles(directory=str(ui_dist_path / "assets")), name="assets")
+    logger.info(f"React UI static files mounted from {ui_dist_path}")
+else:
+    logger.warning(f"React UI dist directory not found at {ui_dist_path}. Run 'npm run build' in src/ui/")
+
 
 @app.get("/")
 async def root():
@@ -284,7 +294,8 @@ async def root():
             "POST /prompt": "Execute synchronous Copilot CLI prompt",
             "POST /prompt/async": "Execute asynchronous Copilot CLI prompt",
             "POST /prompt/stream": "Execute Copilot CLI prompt with real-time streaming output (SSE)",
-            "GET /ui": "Web interface for testing",
+            "GET /ui": "Modern React dashboard (primary UI)",
+            "GET /legacy-ui": "Legacy HTML interface (simple fallback UI)",
             "GET /streaming-test": "Streaming output test page"
         },
         "session_management": {
@@ -899,9 +910,39 @@ async def list_copilot_logs(limit: Optional[int] = 20):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/ui", response_class=HTMLResponse)
-async def web_interface():
-    """Serve the web interface."""
+@app.get("/ui")
+@app.get("/ui/{full_path:path}")
+async def serve_react_app(full_path: str = ""):
+    """Serve the React UI application."""
+    ui_index_path = Path(__file__).parent / "src" / "ui" / "dist" / "index.html"
+    
+    if not ui_index_path.exists():
+        return HTMLResponse(
+            content="""
+            <html>
+                <head><title>UI Not Built</title></head>
+                <body style="font-family: sans-serif; padding: 40px; text-align: center;">
+                    <h1>React UI Not Built</h1>
+                    <p>The React UI has not been built yet.</p>
+                    <p>Please run the following commands:</p>
+                    <pre style="background: #f5f5f5; padding: 20px; display: inline-block; text-align: left;">
+cd src/ui
+npm install
+npm run build
+                    </pre>
+                    <p style="margin-top: 20px;">Or use the <a href="/legacy-ui" style="color: #667eea; font-weight: bold;">legacy HTML interface</a>.</p>
+                </body>
+            </html>
+            """,
+            status_code=503
+        )
+    
+    return FileResponse(ui_index_path)
+
+
+@app.get("/legacy-ui", response_class=HTMLResponse)
+async def legacy_web_interface():
+    """Serve the legacy HTML web interface."""
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
