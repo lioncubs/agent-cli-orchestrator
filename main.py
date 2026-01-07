@@ -26,6 +26,11 @@ from src.query.research_service import ResearchService
 from src.registry.research_store import ResearchStore
 from src.permissions.tool_policy import ToolPolicy
 
+# Import delegation components
+from src.api.routes.delegation import router as delegation_router, init_delegation_routes
+from src.delegation.service import DelegationService
+from src.session.models import GitIdentity
+
 
 # Pydantic models
 class PromptRequest(BaseModel):
@@ -110,6 +115,19 @@ research_service = ResearchService(
     tool_policy=tool_policy
 )
 
+# Initialize delegation service
+# Use default repository path for delegation operations
+default_repo_path = config.get_repository_path()
+agent_identity = GitIdentity(
+    name="Agent CLI Orchestrator",
+    email="agent@cli-orchestrator.local"
+)
+delegation_service = DelegationService(
+    session_store=session_store,
+    repo_path=default_repo_path or ".",
+    agent_identity=agent_identity
+)
+
 # Initialize and include session routes
 init_session_routes(session_store, session_manager)
 app.include_router(sessions_router)
@@ -123,6 +141,10 @@ init_query_routes(
     tool_policy=tool_policy
 )
 app.include_router(query_router)
+
+# Initialize and include delegation routes
+init_delegation_routes(session_store, session_manager, delegation_service)
+app.include_router(delegation_router)
 
 
 @app.get("/")
@@ -162,6 +184,14 @@ async def root():
             "GET /query/research/{id}": "Get specific research artifact",
             "POST /query/research/{id}/delegate": "Create delegation from research artifact",
             "DELETE /query/research/{id}": "Delete research artifact"
+        },
+        "delegation": {
+            "POST /delegation/sessions": "Create a delegation session with worktree",
+            "POST /delegation/sessions/{id}/continue": "Continue delegation with new turn",
+            "POST /delegation/sessions/{id}/commit": "Commit changes in delegation worktree",
+            "POST /delegation/sessions/{id}/pr": "Create pull request for delegation",
+            "DELETE /delegation/sessions/{id}": "Abandon delegation and cleanup",
+            "GET /delegation/sessions/{id}/status": "Get delegation status"
         }
     }
 
