@@ -64,3 +64,12 @@ copilot:
   enabled: true
   timeout: 300  # seconds
   log_dir: "./logs/copilot"  # CLI log directory (files created by Copilot CLI)
+
+# Metrics and Analytics configuration
+metrics:
+  enabled: true
+  database_url: null  # null = SQLite in ./data/metrics.db, or specify connection string
+  collect_system_metrics: true
+  system_metrics_interval: 60  # seconds
+  cache_ttl_seconds: 300  # 5 minutes
+  retention_days: 30  # How long to keep metrics data

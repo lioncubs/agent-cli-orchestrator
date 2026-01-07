@@ -6,10 +6,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, Union
 from pathlib import Path
+from contextlib import asynccontextmanager
 import os
 import asyncio
 import logging
-from pathlib import Path
 
 from config_loader import config
 from git_operations import GitOperations
@@ -52,6 +52,11 @@ from src.mcp.tools.session import SessionTools
 from src.mcp.tools.delegation import DelegationTools
 from src.mcp.tools.repository import RepositoryTools
 from src.mcp.resources import MCPResources
+
+# Import metrics components
+from src.metrics.database import get_db_manager
+from src.metrics.middleware import MetricsMiddleware
+from src.api.routes.metrics import init_metrics_routes
 
 # Setup logging
 logging.basicConfig(
@@ -114,11 +119,47 @@ def resolve_repo_path(repo_name: Optional[str] = None) -> str:
     return repo_path
 
 
-# Initialize FastAPI app
+# Lifespan context manager for startup and shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage application lifespan events."""
+    # Startup
+    logger.info("Starting up application...")
+    
+    # Initialize metrics database if enabled
+    if config.metrics_enabled:
+        try:
+            db_manager = get_db_manager(
+                database_url=config.metrics_database_url,
+                echo=False
+            )
+            await db_manager.init_db()
+            logger.info("Metrics database initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize metrics database: {e}")
+            logger.warning("Metrics collection will be disabled")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down application...")
+    
+    # Close database connections
+    if config.metrics_enabled:
+        try:
+            db_manager = get_db_manager()
+            await db_manager.close()
+            logger.info("Metrics database connections closed")
+        except Exception as e:
+            logger.error(f"Error closing metrics database: {e}")
+
+
+# Initialize FastAPI app with lifespan
 app = FastAPI(
     title="Agent CLI Orchestrator",
     description="Multi-CLI orchestration system with GitHub Copilot CLI support",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
 
 # Setup CORS with configuration
@@ -169,6 +210,15 @@ if auth_config.get("enabled", True):
         require_auth=auth_config.get("require_auth", False)
     )
     logger.info(f"Authentication middleware configured (require_auth={auth_config.get('require_auth', False)})")
+
+# Add metrics collection middleware
+if config.metrics_enabled:
+    app.add_middleware(
+        MetricsMiddleware,
+        collect_system_metrics=config.metrics_collect_system,
+        system_metrics_interval=config.metrics_system_interval
+    )
+    logger.info(f"Metrics middleware configured (system interval: {config.metrics_system_interval}s)")
 
 
 # Initialize Git operations
@@ -263,6 +313,11 @@ app.include_router(delegation_router)
 # Initialize and include authentication routes
 init_auth_routes(storage_dir="./data/auth")
 app.include_router(auth_router)
+
+# Initialize and include metrics routes
+if config.metrics_enabled:
+    init_metrics_routes(app)
+    logger.info("Metrics and analytics routes initialized")
 
 # Mount MCP server at /mcp endpoint
 app.mount("/mcp", mcp_server.get_app())
@@ -369,6 +424,23 @@ async def root():
             "resources": [
                 "orchestrator://sessions - All active sessions",
                 "orchestrator://research - All research artifacts"
+            ]
+        },
+        "metrics_and_analytics": {
+            "GET /metrics": "Get current API metrics summary",
+            "GET /metrics/performance": "Get detailed performance analytics",
+            "GET /metrics/usage": "Get usage analytics",
+            "GET /metrics/health": "Get system health metrics",
+            "GET /metrics/endpoints": "Get per-endpoint metrics",
+            "GET /analytics/dashboard": "Get comprehensive dashboard analytics",
+            "features": [
+                "Real-time performance monitoring",
+                "API request/response tracking",
+                "System resource metrics (CPU, memory, disk)",
+                "User activity tracking",
+                "Automated analytics with caching",
+                "Database-backed persistent metrics",
+                "Percentile calculations (P50, P95, P99)"
             ]
         }
     }
