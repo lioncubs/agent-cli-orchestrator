@@ -53,8 +53,7 @@ class MCPServer:
         
         # Initialize FastMCP server
         self.mcp = FastMCP(
-            "Agent CLI Orchestrator",
-            version="1.0.0"
+            "Agent CLI Orchestrator"
         )
         
         # Register all tools

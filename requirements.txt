@@ -1,18 +1,18 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
-pyyaml==6.0.1
-gitpython==3.1.40
-aiofiles==23.2.1
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+pyyaml>=6.0.1
+gitpython>=3.1.40
+aiofiles>=23.2.1
 
 # MCP dependencies
-mcp[cli]>=1.25.0
+mcp>=1.0.0
 
 # Testing dependencies
 pytest>=7.4.3
 pytest-asyncio>=0.21.1
 pytest-cov>=4.1.0
 pytest-mock>=3.12.0
-httpx>=0.25.2,<0.28.0  # Pin to version compatible with starlette 0.27.0
+httpx>=0.25.2
 coverage>=7.3.2
