@@ -1002,3 +1002,235 @@ WebSocket support for real-time updates is planned for future releases. This wil
 ## Versioning
 
 The current API version is `0.1.0`. Future versions will maintain backward compatibility when possible, and breaking changes will be introduced in new major versions.
+---
+
+## Metrics and Analytics (Phase 10)
+
+The metrics and analytics system provides comprehensive monitoring and performance analysis capabilities.
+
+### GET `/metrics`
+
+Get current API metrics summary for the last N minutes.
+
+**Query Parameters:**
+- `minutes` (optional): Number of minutes to look back (default: 60, max: 1440)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2026-01-07T08:42:04.430276",
+  "metrics": {
+    "total_requests": 1234,
+    "avg_response_time_ms": 45.67,
+    "min_response_time_ms": 5.12,
+    "max_response_time_ms": 523.45,
+    "error_count": 12,
+    "error_rate": 0.97,
+    "period_minutes": 60
+  }
+}
+```
+
+### GET `/metrics/performance`
+
+Get detailed performance analytics.
+
+**Query Parameters:**
+- `hours` (optional): Number of hours to analyze (default: 24, max: 168)
+- `use_cache` (optional): Use cached results if available (default: true)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2026-01-07T08:42:10.123456",
+  "analytics": {
+    "period_hours": 24,
+    "overall": {
+      "total_requests": 5432,
+      "avg_response_time_ms": 67.89,
+      "p50_response_time_ms": 45.23,
+      "p95_response_time_ms": 234.56,
+      "p99_response_time_ms": 456.78,
+      "max_response_time_ms": 987.65
+    },
+    "endpoints": [
+      {
+        "endpoint": "/sessions",
+        "request_count": 1234,
+        "avg_response_time_ms": 56.78,
+        "max_response_time_ms": 345.67
+      }
+    ],
+    "errors_by_endpoint": {
+      "/sessions": 5,
+      "/prompt": 2
+    },
+    "from_cache": false
+  }
+}
+```
+
+### GET `/metrics/usage`
+
+Get usage analytics including active users and top actions.
+
+**Query Parameters:**
+- `hours` (optional): Number of hours to analyze (default: 24, max: 168)
+- `use_cache` (optional): Use cached results if available (default: true)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2026-01-07T08:42:15.123456",
+  "analytics": {
+    "period_hours": 24,
+    "active_users": 15,
+    "total_actions": 234,
+    "top_actions": [
+      {
+        "action": "login",
+        "count": 45
+      },
+      {
+        "action": "create_session",
+        "count": 38
+      }
+    ],
+    "from_cache": false
+  }
+}
+```
+
+### GET `/metrics/health`
+
+Get current system health metrics.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2026-01-07T08:42:11.423458",
+  "system": {
+    "timestamp": "2026-01-07T08:42:11.423458",
+    "cpu_percent": 9.8,
+    "memory_percent": 13.2,
+    "memory_used_mb": 2114.12,
+    "disk_percent": 76.8,
+    "active_sessions": 3,
+    "active_connections": 5
+  }
+}
+```
+
+### GET `/metrics/endpoints`
+
+Get metrics grouped by endpoint.
+
+**Query Parameters:**
+- `minutes` (optional): Number of minutes to look back (default: 60)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2026-01-07T08:42:20.123456",
+  "data": {
+    "endpoints": [
+      {
+        "endpoint": "/sessions",
+        "request_count": 234,
+        "avg_response_time_ms": 45.67
+      },
+      {
+        "endpoint": "/prompt",
+        "request_count": 123,
+        "avg_response_time_ms": 78.90
+      }
+    ],
+    "period_minutes": 60
+  }
+}
+```
+
+### GET `/analytics/dashboard`
+
+Get comprehensive dashboard analytics including performance, usage, system metrics, and API summary.
+
+**Query Parameters:**
+- `use_cache` (optional): Use cached results if available (default: true)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "dashboard": {
+    "timestamp": "2026-01-07T08:42:19.509932",
+    "performance": {
+      "last_hour": {
+        "period_hours": 1,
+        "overall": { /* performance metrics */ },
+        "endpoints": [ /* endpoint list */ ]
+      },
+      "last_24_hours": {
+        "period_hours": 24,
+        "overall": { /* performance metrics */ },
+        "endpoints": [ /* endpoint list */ ]
+      }
+    },
+    "usage": {
+      "period_hours": 24,
+      "active_users": 15,
+      "total_actions": 234,
+      "top_actions": [ /* action list */ ]
+    },
+    "system": {
+      "timestamp": "2026-01-07T08:42:19.507825",
+      "cpu_percent": 2.5,
+      "memory_percent": 13.2,
+      "memory_used_mb": 2106.07,
+      "disk_percent": 76.8,
+      "active_sessions": 0,
+      "active_connections": 0
+    },
+    "api_summary": {
+      "total_requests": 3,
+      "avg_response_time_ms": 76.85,
+      "min_response_time_ms": 11.33,
+      "max_response_time_ms": 110.29,
+      "error_count": 0,
+      "error_rate": 0.0,
+      "period_minutes": 60
+    },
+    "from_cache": false
+  }
+}
+```
+
+### Metrics Features
+
+- **Real-time Monitoring**: Track API requests, response times, and errors in real-time
+- **Performance Analytics**: Calculate percentiles (P50, P95, P99) for response times
+- **System Health**: Monitor CPU, memory, and disk usage
+- **User Activity**: Track user actions and sessions
+- **Caching**: Multi-level caching for improved performance
+- **Database Storage**: Persistent storage using SQLite (or other databases)
+
+### Configuration
+
+Configure metrics in `config.yaml`:
+
+```yaml
+metrics:
+  enabled: true
+  database_url: null  # null = SQLite in ./data/metrics.db
+  collect_system_metrics: true
+  system_metrics_interval: 60  # seconds
+  cache_ttl_seconds: 300  # 5 minutes
+  retention_days: 30  # Data retention period
+```
+
+For more details, see [PHASE10_SUMMARY.md](PHASE10_SUMMARY.md).
+
