@@ -502,8 +502,15 @@ async def web_interface():
                     const data = await response.json();
                     
                     if (response.ok) {
-                        output.innerHTML = '<p class="success">✓ Success</p><pre>' + 
-                            JSON.stringify(data, null, 2) + '</pre>';
+                        // Display the copilot output prominently if available
+                        let displayHTML = '<p class="success">✓ Success</p>';
+                        if (data.output) {
+                            displayHTML += '<div style="background: white; padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #27ae60;"><strong>Copilot Response:</strong><pre style="margin-top: 10px;">' + 
+                                data.output + '</pre></div>';
+                        }
+                        displayHTML += '<details><summary style="cursor: pointer; color: #666; margin-top: 10px;">Show Full Response</summary><pre>' + 
+                            JSON.stringify(data, null, 2) + '</pre></details>';
+                        output.innerHTML = displayHTML;
                     } else {
                         output.innerHTML = '<p class="error">✗ Error</p><pre>' + 
                             JSON.stringify(data, null, 2) + '</pre>';

@@ -53,8 +53,8 @@ class CopilotCLI:
             }
         
         try:
-            # Build command
-            command = ['copilot', 'prompt', '-i', prompt, '-o', 'json']
+            # Build command - using -p flag for prompt
+            command = ['copilot', '-p', prompt]
             
             # Add optional parameters if provided
             if options:
@@ -74,26 +74,16 @@ class CopilotCLI:
             )
             
             if result.returncode == 0:
-                try:
-                    # Parse JSON output
-                    output = json.loads(result.stdout)
-                    return {
-                        "status": "success",
-                        "output": output,
-                        "prompt": prompt
-                    }
-                except json.JSONDecodeError:
-                    # If not valid JSON, return raw output
-                    return {
-                        "status": "success",
-                        "output": result.stdout,
-                        "prompt": prompt,
-                        "raw": True
-                    }
+                # Return raw output (copilot CLI outputs text, not JSON)
+                return {
+                    "status": "success",
+                    "output": result.stdout.strip(),
+                    "prompt": prompt
+                }
             else:
                 return {
                     "status": "error",
-                    "message": result.stderr or "Command failed",
+                    "message": result.stderr or result.stdout or "Command failed",
                     "exit_code": result.returncode
                 }
         
@@ -134,8 +124,8 @@ class CopilotCLI:
             }
         
         try:
-            # Build command
-            command = ['copilot', 'prompt', '-i', prompt, '-o', 'json']
+            # Build command - using -p flag for prompt
+            command = ['copilot', '-p', prompt]
             
             # Add optional parameters if provided
             if options:
@@ -167,26 +157,16 @@ class CopilotCLI:
                 }
             
             if process.returncode == 0:
-                try:
-                    # Parse JSON output
-                    output = json.loads(stdout.decode())
-                    return {
-                        "status": "success",
-                        "output": output,
-                        "prompt": prompt
-                    }
-                except json.JSONDecodeError:
-                    # If not valid JSON, return raw output
-                    return {
-                        "status": "success",
-                        "output": stdout.decode(),
-                        "prompt": prompt,
-                        "raw": True
-                    }
+                # Return raw output (copilot CLI outputs text, not JSON)
+                return {
+                    "status": "success",
+                    "output": stdout.decode().strip(),
+                    "prompt": prompt
+                }
             else:
                 return {
                     "status": "error",
-                    "message": stderr.decode() or "Command failed",
+                    "message": stderr.decode() or stdout.decode() or "Command failed",
                     "exit_code": process.returncode
                 }
         
