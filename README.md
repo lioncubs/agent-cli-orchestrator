@@ -1,14 +1,16 @@
 # 🤖 Agent CLI Orchestrator
 
-A multi-CLI orchestration system with GitHub Copilot CLI support. This project provides an HTTP API and modern React dashboard for managing Git operations and executing AI-powered prompts through the GitHub Copilot CLI.
+A multi-CLI orchestration system with GitHub Copilot SDK support. This project provides an HTTP API and modern React dashboard for managing Git operations and executing AI-powered prompts using the GitHub Copilot SDK.
 
 ## 🌟 Features
 
 - **Modern React Dashboard** - Beautiful, responsive web interface at `/dashboard`
 - **HTTP REST API** - FastAPI-based server with comprehensive endpoints
-- **GitHub Copilot CLI Integration** - Execute prompts synchronously and asynchronously
+- **GitHub Copilot SDK Integration** - Official SDK for better performance and reliability
+- **Backward Compatible** - Supports both SDK and legacy CLI modes
 - **Git Management** - Branch switching and worktree management
 - **Real-time Streaming** - Server-Sent Events (SSE) for live Copilot output
+- **Session Management** - Built-in session handling via SDK
 - **Web Interface** - Legacy interactive UI for testing all features at `/ui`
 - **Docker Support** - Containerized deployment with pre-installed dependencies
 - **YAML Configuration** - Flexible configuration system
@@ -18,6 +20,7 @@ A multi-CLI orchestration system with GitHub Copilot CLI support. This project p
 
 - Python 3.11+
 - Git
+- GitHub Copilot CLI installed and authenticated (the SDK uses the CLI under the hood)
 - GitHub CLI (`gh`) with Copilot extension (for Copilot features)
 - Docker and Docker Compose (optional, for containerized deployment)
 
@@ -313,15 +316,56 @@ agent-cli-orchestrator/
 
 The `config.yaml` file contains all configurable settings:
 
+### Basic Settings
 - **repository.name** - Repository identifier
 - **repository.default_branch** - Default branch name
 - **server.host** - Server host address (default: 127.0.0.1 for localhost-only access)
 - **server.port** - Server port (default: 8000)
-- **copilot.enabled** - Enable/disable Copilot CLI features
-- **copilot.timeout** - Timeout for Copilot CLI commands (seconds)
+
+### Copilot Settings
+- **copilot.enabled** - Enable/disable Copilot features
+- **copilot.timeout** - Timeout for Copilot commands (seconds)
+- **copilot.use_sdk** - Use GitHub Copilot SDK (true, recommended) or legacy CLI mode (false)
+- **copilot.sdk.model** - Default AI model for SDK sessions (e.g., "gpt-4o", "claude-3.5-sonnet")
+- **copilot.sdk.cli_path** - Path to copilot CLI binary (null = use PATH)
+- **copilot.sdk.use_stdio** - Use stdio transport (true) or TCP (false)
+- **copilot.sdk.log_level** - SDK log level: debug, info, warn, error
+
+### Git Settings
 - **worktrees.base_path** - Base directory for worktrees
 
 > ⚠️ **Security**: By default, the server binds to `127.0.0.1` (localhost only). To expose on a network, set `server.host` to `0.0.0.0` but **only** in combination with proper authentication and network security controls. See the [Security](#-security) section below.
+
+### Copilot SDK vs CLI Mode
+
+**SDK Mode (Default, Recommended):**
+```yaml
+copilot:
+  enabled: true
+  use_sdk: true  # Use official GitHub Copilot SDK
+  sdk:
+    model: "gpt-4o"  # Default model
+    use_stdio: true  # Recommended for local use
+```
+
+**Benefits of SDK Mode:**
+- ✅ Better session management with built-in persistence
+- ✅ JSON-RPC communication for reliability
+- ✅ Improved error handling and recovery
+- ✅ Direct access to SDK features (streaming, tools, agents)
+- ✅ Better performance and resource management
+
+**Legacy CLI Mode:**
+```yaml
+copilot:
+  enabled: true
+  use_sdk: false  # Fall back to subprocess CLI calls
+```
+
+Use legacy mode only if:
+- You need specific CLI-only features
+- Testing backward compatibility
+- SDK installation issues (troubleshooting)
 
 ## 🔒 Security
 
