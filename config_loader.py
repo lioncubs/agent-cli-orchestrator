@@ -128,6 +128,31 @@ class Config:
         return self.get('copilot.log_dir', './logs/copilot')
     
     @property
+    def copilot_use_sdk(self) -> bool:
+        """Check if Copilot SDK should be used instead of CLI."""
+        return self.get('copilot.use_sdk', True)
+    
+    @property
+    def copilot_sdk_model(self) -> str:
+        """Get default model for Copilot SDK."""
+        return self.get('copilot.sdk.model', 'gpt-4o')
+    
+    @property
+    def copilot_sdk_cli_path(self) -> Optional[str]:
+        """Get Copilot CLI path for SDK."""
+        return self.get('copilot.sdk.cli_path')
+    
+    @property
+    def copilot_sdk_use_stdio(self) -> bool:
+        """Check if SDK should use stdio transport."""
+        return self.get('copilot.sdk.use_stdio', True)
+    
+    @property
+    def copilot_sdk_log_level(self) -> str:
+        """Get SDK log level."""
+        return self.get('copilot.sdk.log_level', 'info')
+    
+    @property
     def worktrees_base_path(self) -> str:
         """Get worktrees base path for default repository.
         
