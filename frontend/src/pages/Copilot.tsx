@@ -10,7 +10,7 @@ export function Copilot() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [useStreaming, setUseStreaming] = useState(true);
   const [selectedRepo, setSelectedRepo] = useState<string>('');
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
   const { data: repos } = useQuery({
@@ -45,57 +45,73 @@ export function Copilot() {
     },
   });
 
-  const handleStreamingPrompt = () => {
+  const handleStreamingPrompt = async () => {
     if (!prompt.trim()) return;
 
     setStreamingOutput([`🚀 Executing: ${prompt}\n`]);
     setIsStreaming(true);
 
     try {
-      const eventSource = apiClient.createStreamingPrompt({
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      const response = await apiClient.createStreamingPrompt({
         prompt: prompt.trim(),
         repo_name: selectedRepo || undefined,
       });
 
-      eventSourceRef.current = eventSource;
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data: StreamEvent = JSON.parse(event.data);
-          
-          switch (data.type) {
-            case 'start':
-              setStreamingOutput((prev) => [...prev, '⏳ Starting...']);
-              break;
-            case 'stdout':
-              setStreamingOutput((prev) => [...prev, data.data || '']);
-              break;
-            case 'stderr':
-              setStreamingOutput((prev) => [...prev, `⚠️ ${data.data}`]);
-              break;
-            case 'complete':
-              setStreamingOutput((prev) => [...prev, '\n✅ Completed']);
-              setIsStreaming(false);
-              eventSource.close();
-              break;
-            case 'error':
-              setStreamingOutput((prev) => [...prev, `\n❌ Error: ${data.message}`]);
-              setIsStreaming(false);
-              eventSource.close();
-              break;
-          }
-        } catch (error) {
-          console.error('Failed to parse event:', error);
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          setIsStreaming(false);
+          break;
         }
-      };
 
-      eventSource.onerror = () => {
-        setStreamingOutput((prev) => [...prev, '\n❌ Connection error']);
-        setIsStreaming(false);
-        eventSource.close();
-      };
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data: StreamEvent = JSON.parse(line.slice(6));
+              
+              switch (data.type) {
+                case 'start':
+                  setStreamingOutput((prev) => [...prev, '⏳ Starting...']);
+                  break;
+                case 'stdout':
+                  setStreamingOutput((prev) => [...prev, data.data || '']);
+                  break;
+                case 'stderr':
+                  setStreamingOutput((prev) => [...prev, `⚠️ ${data.data}`]);
+                  break;
+                case 'complete':
+                  setStreamingOutput((prev) => [...prev, '\n✅ Completed']);
+                  setIsStreaming(false);
+                  break;
+                case 'error':
+                  setStreamingOutput((prev) => [...prev, `\n❌ Error: ${data.message}`]);
+                  setIsStreaming(false);
+                  break;
+              }
+            } catch (error) {
+              console.error('Failed to parse event:', error);
+            }
+          }
+        }
+      }
     } catch (error: any) {
-      setStreamingOutput((prev) => [...prev, `\n❌ Error: ${error.message}`]);
+      if (error.name !== 'AbortError') {
+        setStreamingOutput((prev) => [...prev, `\n❌ Error: ${error.message}`]);
+      }
       setIsStreaming(false);
     }
   };
@@ -120,8 +136,8 @@ export function Copilot() {
   };
 
   const handleStop = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
       setIsStreaming(false);
       setStreamingOutput((prev) => [...prev, '\n⚠️ Stopped by user']);
     }
@@ -135,8 +151,8 @@ export function Copilot() {
 
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);

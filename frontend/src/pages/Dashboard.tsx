@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { GitBranch, FolderGit2, MessageSquare, Activity as ActivityIcon } from 'lucide-react';
 
@@ -80,27 +81,27 @@ export function Dashboard() {
       <div className="card">
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <a
-            href="/copilot"
+          <Link
+            to="/copilot"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <MessageSquare className="mr-2 h-5 w-5 text-primary-600" />
             <span className="font-medium">New Copilot Prompt</span>
-          </a>
-          <a
-            href="/branches"
+          </Link>
+          <Link
+            to="/branches"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <GitBranch className="mr-2 h-5 w-5 text-primary-600" />
             <span className="font-medium">Switch Branch</span>
-          </a>
-          <a
-            href="/repositories"
+          </Link>
+          <Link
+            to="/repositories"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <FolderGit2 className="mr-2 h-5 w-5 text-primary-600" />
             <span className="font-medium">Manage Repos</span>
-          </a>
+          </Link>
         </div>
       </div>
 

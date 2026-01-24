@@ -132,15 +132,23 @@ class ApiClient {
     return data;
   }
 
-  // Streaming endpoint (returns EventSource for SSE)
-  createStreamingPrompt(request: PromptRequest): EventSource {
-    const params = new URLSearchParams();
-    Object.entries(request).forEach(([key, value]) => {
-      params.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
-    });
-    
+  // Streaming endpoint (uses fetch with POST and ReadableStream)
+  async createStreamingPrompt(request: PromptRequest): Promise<Response> {
     const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    return new EventSource(`${baseURL}/prompt/stream?${params.toString()}`);
+
+    const response = await fetch(`${baseURL}/prompt/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Streaming request failed with status ${response.status}`);
+    }
+
+    return response;
   }
 }
 

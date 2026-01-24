@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { FolderGit2, ExternalLink } from 'lucide-react';
 
@@ -49,13 +50,13 @@ export function Repositories() {
                     )}
                   </div>
                 </div>
-                <a
-                  href={`/branches?repo=${repo.name}`}
+                <Link
+                  to={`/branches?repo=${repo.name}`}
                   className="flex items-center text-sm text-primary-600 hover:text-primary-700"
                 >
                   View branches
                   <ExternalLink className="ml-1 h-4 w-4" />
-                </a>
+                </Link>
               </div>
             ))}
           </div>
