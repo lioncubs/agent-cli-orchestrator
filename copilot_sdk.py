@@ -356,40 +356,11 @@ class CopilotSDK:
             # Create session
             session = await client.create_session(session_config)
             
-            # Set up event handler to stream events
-            def on_event(event):
-                """Handle session events and stream them."""
-                try:
-                    event_data = {
-                        "type": event.type.value if hasattr(event.type, 'value') else str(event.type),
-                        "data": {}
-                    }
-                    
-                    # Extract relevant data from event
-                    if hasattr(event, 'data'):
-                        if hasattr(event.data, 'content'):
-                            event_data["data"]["content"] = event.data.content
-                        if hasattr(event.data, 'delta'):
-                            event_data["data"]["delta"] = event.data.delta
-                    
-                    return json.dumps(event_data) + "\n"
-                except Exception as e:
-                    return json.dumps({
-                        "type": "error",
-                        "message": f"Event handling error: {str(e)}"
-                    }) + "\n"
-            
-            # Register event handler
-            session.on(on_event)
-            
-            # Send the prompt
-            await session.send({"prompt": prompt})
-            
-            # Stream events as they come in
-            # Note: The SDK's on() handler will be called for each event
-            # We need to collect and yield these events
-            
-            # Wait for completion (with timeout)
+            # Send the prompt and wait for response
+            # Note: For true event-by-event streaming, the SDK's on() handler
+            # could be used to capture intermediate events. This simplified
+            # version returns the complete response which is compatible with
+            # the existing streaming API expectations.
             try:
                 response = await asyncio.wait_for(
                     session.send_and_wait({"prompt": prompt}),
