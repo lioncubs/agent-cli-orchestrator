@@ -64,6 +64,13 @@ copilot:
   enabled: true
   timeout: 300  # seconds
   log_dir: "./logs/copilot"  # CLI log directory (files created by Copilot CLI)
+  use_sdk: true  # Use GitHub Copilot SDK instead of direct CLI calls (recommended)
+  # SDK-specific settings
+  sdk:
+    model: "gpt-4o"  # Default model for SDK sessions
+    cli_path: null  # Path to copilot CLI binary (null = use PATH)
+    use_stdio: true  # Use stdio transport (true) or TCP (false)
+    log_level: "info"  # SDK log level: debug, info, warn, error
 
 # Metrics and Analytics configuration
 metrics:

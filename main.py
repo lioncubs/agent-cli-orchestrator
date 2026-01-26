@@ -14,6 +14,7 @@ import logging
 from config_loader import config
 from git_operations import GitOperations
 from copilot_cli import copilot_cli
+from copilot_sdk import copilot_sdk
 from activity_log import activity_log
 
 # Import session management components
@@ -88,6 +89,17 @@ class WorktreeCreateRequest(BaseModel):
     create_branch: Optional[bool] = False
     repo_name: Optional[str] = None
 
+
+def get_copilot_backend():
+    """Get the appropriate Copilot backend (SDK or CLI) based on configuration.
+    
+    Returns:
+        Either copilot_sdk or copilot_cli instance
+    """
+    if config.copilot_use_sdk:
+        return copilot_sdk
+    else:
+        return copilot_cli
 
 
 def resolve_repo_path(repo_name: Optional[str] = None) -> str:
@@ -771,7 +783,8 @@ async def execute_prompt(request: PromptRequest):
     """Execute a synchronous Copilot CLI prompt."""
     try:
         repo_path = resolve_repo_path(request.repo_name) if request.repo_name else None
-        result = copilot_cli.execute_prompt(
+        backend = get_copilot_backend()
+        result = backend.execute_prompt(
             prompt=request.prompt,
             options=request.options,
             cwd=repo_path
@@ -835,7 +848,8 @@ async def execute_prompt_async(request: PromptRequest):
     """Execute an asynchronous Copilot CLI prompt."""
     try:
         repo_path = resolve_repo_path(request.repo_name) if request.repo_name else None
-        result = await copilot_cli.execute_prompt_async(
+        backend = get_copilot_backend()
+        result = await backend.execute_prompt_async(
             prompt=request.prompt,
             options=request.options,
             cwd=repo_path
@@ -902,8 +916,9 @@ async def execute_prompt_streaming(request: PromptRequest):
         """Generator that yields streaming output from Copilot CLI."""
         try:
             repo_path = resolve_repo_path(request.repo_name) if request.repo_name else None
+            backend = get_copilot_backend()
             
-            async for chunk in copilot_cli.execute_prompt_streaming(
+            async for chunk in backend.execute_prompt_streaming(
                 prompt=request.prompt,
                 options=request.options,
                 cwd=repo_path
@@ -929,7 +944,8 @@ async def execute_prompt_streaming(request: PromptRequest):
 async def list_copilot_sessions():
     """List active Copilot CLI sessions (legacy endpoint)."""
     try:
-        result = copilot_cli.list_sessions()
+        backend = get_copilot_backend()
+        result = backend.list_sessions()
         activity_log.add(
             action="list_copilot_sessions",
             status=result.get("status", "unknown"),
