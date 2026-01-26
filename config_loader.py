@@ -134,6 +134,62 @@ class Config:
         Deprecated: Use get_worktrees_path() instead for per-repository paths.
         """
         return self.get_worktrees_path() or './worktrees'
+    
+    @property
+    def metrics_enabled(self) -> bool:
+        """Check if metrics collection is enabled."""
+        return self.get('metrics.enabled', True)
+    
+    @property
+    def metrics_database_url(self) -> Optional[str]:
+        """Get metrics database URL."""
+        return self.get('metrics.database_url', None)
+    
+    @property
+    def metrics_collect_system(self) -> bool:
+        """Check if system metrics collection is enabled."""
+        return self.get('metrics.collect_system_metrics', True)
+    
+    @property
+    def metrics_system_interval(self) -> int:
+        """Get system metrics collection interval in seconds."""
+        return self.get('metrics.system_metrics_interval', 60)
+    
+    @property
+    def metrics_cache_ttl(self) -> int:
+        """Get metrics cache TTL in seconds."""
+        return self.get('metrics.cache_ttl_seconds', 300)
+    
+    @property
+    def metrics_retention_days(self) -> int:
+        """Get metrics retention period in days."""
+        return self.get('metrics.retention_days', 30)
+    
+    # Copilot PAT configuration
+    @property
+    def copilot_pat_enabled(self) -> bool:
+        """Check if Copilot PAT management is enabled."""
+        return self.get("copilot_pat.enabled", True)
+    
+    @property
+    def copilot_pat_validate_on_create(self) -> bool:
+        """Check if PATs should be validated on creation."""
+        return self.get("copilot_pat.validate_on_create", True)
+    
+    @property
+    def copilot_pat_max_per_user(self) -> int:
+        """Get maximum PATs per user."""
+        return self.get("copilot_pat.max_pats_per_user", 5)
+    
+    @property
+    def copilot_pat_auto_deactivate(self) -> bool:
+        """Check if PATs should auto-deactivate on validation failures."""
+        return self.get("copilot_pat.auto_deactivate_on_failures", True)
+    
+    @property
+    def copilot_pat_validation_cache_ttl(self) -> int:
+        """Get PAT validation cache TTL in seconds."""
+        return self.get("copilot_pat.validation_cache_ttl", 3600)
 
 
 # Global config instance

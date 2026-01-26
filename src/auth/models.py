@@ -49,3 +49,50 @@ class APIKeyCreate(BaseModel):
     name: str
     scopes: List[str] = Field(default_factory=lambda: ["read", "write"])
     expires_at: Optional[datetime] = None
+
+
+class CopilotPAT(BaseModel):
+    """Copilot Personal Access Token model."""
+    id: UUID = Field(default_factory=uuid4)
+    user_id: UUID
+    pat_encrypted: str  # Encrypted with Fernet
+    pat_hash: str  # SHA-256 hash for validation
+    label: str  # User-defined label (e.g., "Work", "Personal")
+    scopes: List[str] = Field(default_factory=lambda: ["copilot"])
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: Optional[datetime] = None
+    last_used_at: Optional[datetime] = None
+    last_validated_at: Optional[datetime] = None
+    is_active: bool = True
+    validation_failures: int = 0
+    revoked_at: Optional[datetime] = None
+    revoked_reason: Optional[str] = None
+
+
+class CopilotPATCreate(BaseModel):
+    """Model for creating a new Copilot PAT."""
+    pat: str  # Plaintext PAT (will be encrypted)
+    label: str
+    expires_at: Optional[datetime] = None
+
+
+class CopilotPATUpdate(BaseModel):
+    """Model for updating a Copilot PAT."""
+    label: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class CopilotPATResponse(BaseModel):
+    """Response model for Copilot PAT (excludes sensitive data)."""
+    id: UUID
+    user_id: UUID
+    label: str
+    scopes: List[str]
+    created_at: datetime
+    expires_at: Optional[datetime]
+    last_used_at: Optional[datetime]
+    last_validated_at: Optional[datetime]
+    is_active: bool
+    validation_failures: int
+    revoked_at: Optional[datetime]
+    revoked_reason: Optional[str]

@@ -64,3 +64,20 @@ copilot:
   enabled: true
   timeout: 300  # seconds
   log_dir: "./logs/copilot"  # CLI log directory (files created by Copilot CLI)
+
+# Metrics and Analytics configuration
+metrics:
+  enabled: true
+  database_url: null  # null = SQLite in ./data/metrics.db, or specify connection string
+  collect_system_metrics: true
+  system_metrics_interval: 60  # seconds
+  cache_ttl_seconds: 300  # 5 minutes
+  retention_days: 30  # How long to keep metrics data
+
+# Copilot PAT Management configuration
+copilot_pat:
+  enabled: true
+  validate_on_create: true  # Validate PAT against GitHub API when creating
+  max_pats_per_user: 5  # Maximum number of PATs per user
+  auto_deactivate_on_failures: true  # Auto-deactivate after 3 validation failures
+  validation_cache_ttl: 3600  # Cache validation results for 1 hour
