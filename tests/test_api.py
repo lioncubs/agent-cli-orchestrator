@@ -324,13 +324,32 @@ class TestAPIEndpoints:
         assert response.status_code == 400
     
     def test_web_interface(self, client):
-        """Test GET /ui returns HTML page."""
+        """Test GET /ui returns HTML page or 404 fallback."""
         response = client.get("/ui")
+        
+        # The endpoint should return either:
+        # - 200 with React app if built (FileResponse)
+        # - 404 with fallback message if not built (HTMLResponse)
+        assert response.status_code in [200, 404]
+        assert "text/html" in response.headers["content-type"]
+        
+        if response.status_code == 404:
+            # UI not built - verify fallback message
+            assert b"React UI Not Built" in response.content
+            assert b"legacy HTML interface" in response.content
+        else:
+            # React UI is built - would serve index.html
+            pass
+    
+    def test_legacy_ui(self, client):
+        """Test GET /legacy-ui returns legacy HTML interface."""
+        response = client.get("/legacy-ui")
         
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
         assert b"Agent CLI Orchestrator" in response.content
         assert b"Repository Information" in response.content
+        assert b"Copilot CLI Prompt" in response.content
     
     def test_api_docs_available(self, client):
         """Test that OpenAPI docs are available."""

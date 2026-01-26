@@ -192,6 +192,8 @@ gh copilot suggest "How do I list all files in a directory recursively?"
    - API Documentation: http://localhost:8000/docs
    - Legacy Web Interface: http://localhost:8000/ui
    - API Root: http://localhost:8000/
+   
+   **Note**: The React UI requires a build step. If not built, you'll see instructions and a link to the legacy UI. The legacy UI works without any build step.
 
 ### Docker Deployment
 
@@ -292,9 +294,21 @@ gh copilot suggest "How do I list all files in a directory recursively?"
   - Same request/response format as `/prompt`
   - Supports all the same options: `branch`, `worktree`, `session_id`
 
-### Web Interface
+### Web Interfaces
 
-- **GET `/ui`** - Interactive web interface for testing all features
+The orchestrator provides **two web interfaces** for different use cases:
+
+#### Modern React Dashboard (`/ui`)
+- Full-featured SPA with authentication, session management, and delegation
+- Built with React, TypeScript, and Tailwind CSS
+- **Requires build step**: `cd src/ui && npm install && npm run build`
+- See [DUAL_UI_SETUP.md](DUAL_UI_SETUP.md) for details
+
+#### Legacy HTML Interface (`/legacy-ui`)
+- Simple, embedded HTML UI - works immediately without build
+- Core features: Copilot prompts, branch/worktree management, activity logs
+- Perfect for quick testing and simple deployments
+- **No build required** - always available
 
 ## 🏗️ Project Structure
 
@@ -515,7 +529,8 @@ curl http://localhost:8000/branches
 ### API Endpoint Examples
 
 All prompts can be tested via:
-- **Web UI**: http://localhost:8000/ui
+- **Legacy HTML UI**: http://localhost:8000/legacy-ui (works immediately)
+- **Modern React UI**: http://localhost:8000/ui (after build)
 - **API Endpoint**: `POST http://localhost:8000/prompt`
 - **Async Endpoint**: `POST http://localhost:8000/prompt/async`
 
@@ -523,7 +538,7 @@ For detailed API documentation, see [API.md](API.md).
 
 ### Testing via Web Interface
 
-1. Navigate to http://localhost:8000/ui
+1. Navigate to http://localhost:8000/legacy-ui (or /ui if React build is available)
 2. Test repository information retrieval
 3. Test branch switching
 4. Test worktree creation and listing
