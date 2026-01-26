@@ -56,3 +56,9 @@ MagicMock/
 
 # Authentication data storage
 data/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/coverage/
