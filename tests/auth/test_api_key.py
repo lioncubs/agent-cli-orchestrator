@@ -1,11 +1,12 @@
 """Tests for API key provider."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from src.auth.providers.api_key import APIKeyProvider
 from src.auth.models import APIKey
+from src.core.security import APIKeyHasher
 
 
 class TestAPIKeyProvider:
@@ -13,8 +14,9 @@ class TestAPIKeyProvider:
     
     def test_generate_key(self):
         """Test API key generation."""
-        key1 = APIKeyProvider.generate_key()
-        key2 = APIKeyProvider.generate_key()
+        hasher = APIKeyHasher()
+        key1 = hasher.generate_key()
+        key2 = hasher.generate_key()
         
         # Keys should be different
         assert key1 != key2
@@ -27,44 +29,50 @@ class TestAPIKeyProvider:
     
     def test_hash_key(self):
         """Test key hashing."""
+        hasher = APIKeyHasher()
         key = "test_api_key_12345"
-        hash1 = APIKeyProvider.hash_key(key)
-        hash2 = APIKeyProvider.hash_key(key)
+        hash1 = hasher.hash_key(key)
+        hash2 = hasher.hash_key(key)
         
-        # Same key should produce same hash
-        assert hash1 == hash2
+        # Same key should produce same hash (salted, so different each time)
+        # Actually with salted hashes, they will be different
+        # But we can verify both hashes verify against the key
+        assert hasher.verify_key(key, hash1) is True
+        assert hasher.verify_key(key, hash2) is True
         
         # Hash should be different from key
         assert hash1 != key
-        
-        # Hash should be a hex string (SHA-256 = 64 chars)
-        assert len(hash1) == 64
-        assert all(c in "0123456789abcdef" for c in hash1)
+        assert hash2 != key
     
     def test_hash_different_keys(self):
         """Test that different keys produce different hashes."""
+        hasher = APIKeyHasher()
         key1 = "test_key_1"
         key2 = "test_key_2"
         
-        hash1 = APIKeyProvider.hash_key(key1)
-        hash2 = APIKeyProvider.hash_key(key2)
+        hash1 = hasher.hash_key(key1)
+        hash2 = hasher.hash_key(key2)
         
-        assert hash1 != hash2
+        # Different keys should not verify against each other's hashes
+        assert hasher.verify_key(key1, hash2) is False
+        assert hasher.verify_key(key2, hash1) is False
     
     def test_verify_key_success(self):
         """Test successful key verification."""
+        hasher = APIKeyHasher()
         key = "test_api_key"
-        key_hash = APIKeyProvider.hash_key(key)
+        key_hash = hasher.hash_key(key)
         
-        assert APIKeyProvider.verify_key(key, key_hash) is True
+        assert hasher.verify_key(key, key_hash) is True
     
     def test_verify_key_failure(self):
         """Test failed key verification."""
+        hasher = APIKeyHasher()
         key = "test_api_key"
         wrong_key = "wrong_api_key"
-        key_hash = APIKeyProvider.hash_key(key)
+        key_hash = hasher.hash_key(key)
         
-        assert APIKeyProvider.verify_key(wrong_key, key_hash) is False
+        assert hasher.verify_key(wrong_key, key_hash) is False
     
     def test_is_expired_no_expiry(self):
         """Test expiration check with no expiry date."""
@@ -114,9 +122,9 @@ class TestAPIKeyProvider:
         assert api_key.last_used_at is None
         
         # Update last used
-        before = datetime.utcnow()
+        before = datetime.now(timezone.utc)
         updated_key = APIKeyProvider.update_last_used(api_key)
-        after = datetime.utcnow()
+        after = datetime.now(timezone.utc)
         
         # Check that last_used_at is set and reasonable
         assert updated_key.last_used_at is not None
