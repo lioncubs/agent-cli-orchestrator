@@ -61,6 +61,10 @@ from src.api.routes.metrics import init_metrics_routes
 # Import Copilot PAT components
 from src.api.routes.copilot_pat import init_copilot_pat_routes
 
+# Import memory components
+from src.api.routes.memory import router as memory_router, init_memory_routes
+from src.memory.service import MemoryService
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -326,6 +330,12 @@ if config.metrics_enabled:
 if config.copilot_pat_enabled:
     init_copilot_pat_routes(app)
     logger.info("Copilot PAT routes initialized")
+
+# Initialize and include memory routes
+memory_service = MemoryService(storage_dir="./data/memories")
+init_memory_routes(memory_service)
+app.include_router(memory_router)
+logger.info("Memory routes initialized")
 
 # Mount MCP server at /mcp endpoint
 app.mount("/mcp", mcp_server.get_app())
