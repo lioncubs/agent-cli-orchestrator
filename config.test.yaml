@@ -1,0 +1,79 @@
+# Test configuration for agent-cli-orchestrator
+# Used by: pytest (backend), Playwright/Puppeteer (E2E)
+# Usage: CONFIG_FILE=config.test.yaml python main.py
+
+# Repository configuration (test-specific)
+repositories:
+  - name: "test-repo"
+    path: "."
+    default: true
+    worktrees_path: "./test-worktrees"
+  
+# Server configuration
+server:
+  # Use 0.0.0.0 for network access in dev containers and CI
+  host: "0.0.0.0"
+  port: 8001  # Different port to avoid conflicts with dev server
+  ssl_enabled: false
+  ssl_certfile: null
+  ssl_keyfile: null
+
+# Security configuration - relaxed for testing
+security:
+  auth:
+    enabled: false  # Disable auth for E2E tests
+    require_auth: false
+    exclude_paths:
+      - "/docs"
+      - "/redoc"
+      - "/openapi.json"
+      - "/health"
+      - "/_health"
+      - "/api"
+      - "/ui"
+      - "/dashboard"
+  
+  rate_limit:
+    enabled: false  # Disable rate limiting for tests
+    requests_per_minute: 1000
+    burst: 100
+  
+  headers:
+    enable_hsts: false
+    hsts_max_age: 31536000
+    enable_csp: false  # Disable CSP for testing
+  
+  cors:
+    enabled: true
+    allow_origins:
+      - "http://localhost"
+      - "http://localhost:8001"
+      - "http://localhost:5173"
+      - "http://127.0.0.1"
+      - "http://127.0.0.1:8001"
+      - "http://127.0.0.1:5173"
+      - "*"  # Allow all origins in test mode
+    allow_credentials: true
+  
+# Copilot CLI configuration
+copilot:
+  enabled: true  # Enable for Copilot CLI testing
+  timeout: 60  # Shorter timeout for tests
+  log_dir: "./test-logs/copilot"
+
+# Metrics and Analytics - isolated test database
+metrics:
+  enabled: true
+  database_url: "sqlite:///./test-data/metrics.db"
+  collect_system_metrics: false  # Disable system metrics in tests
+  system_metrics_interval: 60
+  cache_ttl_seconds: 10  # Short cache for testing
+  retention_days: 1
+
+# Copilot PAT Management
+copilot_pat:
+  enabled: true
+  validate_on_create: false  # Skip GitHub API validation in tests
+  max_pats_per_user: 10
+  auto_deactivate_on_failures: false
+  validation_cache_ttl: 60

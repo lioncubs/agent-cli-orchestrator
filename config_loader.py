@@ -1,5 +1,6 @@
 """Configuration loader for the agent-cli-orchestrator."""
 
+import os
 import yaml
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -8,7 +9,10 @@ from typing import Dict, Any, List, Optional
 class Config:
     """Configuration management class."""
     
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self, config_path: str = None):
+        # Support CONFIG_FILE env variable for test configuration
+        if config_path is None:
+            config_path = os.environ.get("CONFIG_FILE", "config.yaml")
         self.config_path = Path(config_path)
         self._config: Dict[str, Any] = {}
         self.load()
@@ -192,5 +196,15 @@ class Config:
         return self.get("copilot_pat.validation_cache_ttl", 3600)
 
 
-# Global config instance
-config = Config()
+def _get_config_instance() -> Config:
+    """Get or create the global config instance.
+    
+    This function reads CONFIG_FILE from environment at call time,
+    allowing tests to set the environment variable before importing.
+    """
+    config_path = os.environ.get("CONFIG_FILE", "config.yaml")
+    return Config(config_path)
+
+
+# Global config instance - reads CONFIG_FILE env var at import time
+config = _get_config_instance()
