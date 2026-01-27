@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@anthropic-ai/mcp-server-playwright"],
+      "description": "Browser automation for AI-assisted testing",
+      "env": {
+        "PLAYWRIGHT_BROWSER": "chromium",
+        "HEADLESS": "true"
+      }
+    },
+    "puppeteer": {
+      "command": "npx",
+      "args": ["@anthropic-ai/mcp-server-puppeteer"],
+      "description": "Puppeteer browser control for testing",
+      "env": {
+        "PUPPETEER_HEADLESS": "true"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/workspaces/lioncubs/agent-cli-orchestrator"
+      ],
+      "description": "File system access for test file management"
+    }
+  }
+}

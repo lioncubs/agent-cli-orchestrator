@@ -482,7 +482,7 @@ async def health_check():
             "auth_enabled": auth_config.get("enabled", True),
             "rate_limit_enabled": rate_limit_config.get("enabled", True),
             "cors_enabled": cors_config.get("enabled", True),
-            "ssl_enabled": config.config.get("server", {}).get("ssl_enabled", False)
+            "ssl_enabled": config._config.get("server", {}).get("ssl_enabled", False)
         },
         "audit_events_count": len(security_audit_log._entries)
     }
@@ -1006,30 +1006,11 @@ async def list_copilot_logs(limit: Optional[int] = 20):
 @app.get("/ui")
 @app.get("/ui/{full_path:path}")
 async def serve_react_app(full_path: str = ""):
-    """Serve the React UI application."""
-    ui_index_path = Path(__file__).parent / "src" / "ui" / "dist" / "index.html"
-    
-    if not ui_index_path.exists():
-        return HTMLResponse(
-            content="""
-            <html>
-                <head><title>UI Not Built</title></head>
-                <body style="font-family: sans-serif; padding: 40px; text-align: center;">
-                    <h1>React UI Not Built</h1>
-                    <p>The React UI has not been built yet.</p>
-                    <p>Please run the following commands:</p>
-                    <pre style="background: #f5f5f5; padding: 20px; display: inline-block; text-align: left;">
-cd src/ui
-npm install
-npm run build
-                    </pre>
-                </body>
-            </html>
-            """,
-            status_code=503
-        )
-    
-    return FileResponse(ui_index_path)
+    """Redirect to the React dashboard."""
+    from fastapi.responses import RedirectResponse
+    if full_path:
+        return RedirectResponse(url=f"/dashboard/{full_path}", status_code=302)
+    return RedirectResponse(url="/dashboard", status_code=302)
 
 
 
