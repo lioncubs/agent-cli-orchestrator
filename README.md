@@ -7,6 +7,7 @@ A multi-CLI orchestration system with GitHub Copilot CLI support. This project p
 - **Modern React Dashboard** - Beautiful, responsive web interface at `/dashboard`
 - **HTTP REST API** - FastAPI-based server with comprehensive endpoints
 - **GitHub Copilot CLI Integration** - Execute prompts synchronously and asynchronously
+- **Memory Management** - Store and retrieve personal memories with tags and metadata
 - **Git Management** - Branch switching and worktree management
 - **Real-time Streaming** - Server-Sent Events (SSE) for live Copilot output
 - **Web Interface** - Legacy interactive UI for testing all features at `/ui`
@@ -523,6 +524,24 @@ curl -X POST http://localhost:8000/prompt \
 ```bash
 curl http://localhost:8000/worktrees
 ```
+
+**Create a memory:**
+```bash
+curl -X POST http://localhost:8000/memories/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "your_user_id",
+    "content": "I learned about FastAPI today",
+    "tags": ["learning", "python"]
+  }'
+```
+
+**Get your last memory:**
+```bash
+curl "http://localhost:8000/memories/last?user_id=your_user_id"
+```
+
+For more memory management examples, see [docs/MEMORY.md](docs/MEMORY.md).
 
 ## 🐳 Docker Notes
 
