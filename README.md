@@ -202,7 +202,238 @@ gh copilot suggest "How do I list all files in a directory recursively?"
 2. **Access the application**
    - Same URLs as local development
 
-## 📚 API Endpoints
+## �️ Developer Setup
+
+This section covers the complete development environment setup including frontend build, testing infrastructure, and optional DevContainer support.
+
+### Option 1: Manual Setup
+
+#### Prerequisites for Development
+
+| Requirement | Version | Purpose |
+|-------------|---------|---------|
+| Python | 3.11+ | Backend server |
+| Node.js | 18+ | Frontend build & testing |
+| npm | 9+ | Package management |
+| Git | 2.30+ | Version control |
+| GitHub CLI | 2.0+ | Copilot CLI integration |
+
+#### Install Node.js (for frontend development)
+
+**macOS:**
+```bash
+brew install node
+```
+
+**Ubuntu/Debian:**
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+**Windows:**
+```bash
+winget install OpenJS.NodeJS.LTS
+```
+
+Verify installation:
+```bash
+node --version  # Should show 18+ 
+npm --version   # Should show 9+
+```
+
+#### Complete Development Setup
+
+1. **Clone and enter the repository**
+   ```bash
+   git clone https://github.com/lioncubs/agent-cli-orchestrator.git
+   cd agent-cli-orchestrator
+   ```
+
+2. **Set up Python virtual environment**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. **Install frontend dependencies**
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+4. **Install Playwright browsers (for E2E testing)**
+   ```bash
+   npx playwright install chromium
+   ```
+
+5. **Build the frontend**
+   ```bash
+   npm run build
+   cd ..
+   ```
+
+6. **Run the server**
+   ```bash
+   python main.py
+   ```
+
+#### Running Tests
+
+**Backend tests (pytest):**
+```bash
+# Run all tests
+python -m pytest tests/
+
+# Run with coverage
+python -m pytest tests/ --cov=. --cov-report=html
+
+# Run in parallel (faster)
+python -m pytest tests/ -n auto
+```
+
+**Frontend unit tests (Vitest):**
+```bash
+cd frontend
+npm run test        # Run once
+npm run test:ui     # Interactive UI mode
+```
+
+**End-to-end tests (Playwright):**
+```bash
+# Start server with test config first
+CONFIG_FILE=config.test.yaml python main.py &
+
+# Run E2E tests
+cd frontend
+npm run test:e2e           # Headless
+npm run test:e2e:headed    # With browser visible
+npm run test:e2e:ui        # Interactive UI mode
+```
+
+**Run all tests at once:**
+```bash
+./scripts/test-all.sh
+```
+
+### Option 2: DevContainer Setup (Recommended)
+
+The easiest way to get a fully configured development environment is using VS Code DevContainers. Everything is pre-installed and ready to use.
+
+#### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine on Linux)
+- [VS Code](https://code.visualstudio.com/)
+- [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+#### Quick Start with DevContainer
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/lioncubs/agent-cli-orchestrator.git
+   ```
+
+2. **Open in VS Code**
+   ```bash
+   code agent-cli-orchestrator
+   ```
+
+3. **Reopen in Container**
+   - Press `F1` or `Ctrl+Shift+P`
+   - Type "Dev Containers: Reopen in Container"
+   - Select it and wait for the container to build
+
+4. **Start developing!**
+   - All dependencies are pre-installed
+   - Python venv is activated automatically
+   - Node.js and npm are ready
+   - Playwright browsers are installed
+   - GitHub CLI is available
+
+#### DevContainer Configuration
+
+Create `.devcontainer/devcontainer.json`:
+
+```json
+{
+  "name": "Agent CLI Orchestrator",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "pip install -r requirements.txt && cd frontend && npm install && npx playwright install chromium --with-deps && npm run build",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-playwright.playwright"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "forwardPorts": [8000, 8001, 5173],
+  "portsAttributes": {
+    "8000": { "label": "Backend Server" },
+    "8001": { "label": "Test Server" },
+    "5173": { "label": "Vite Dev Server" }
+  }
+}
+```
+
+#### What's Included in DevContainer
+
+- **Python 3.11** with pip and venv
+- **Node.js 20** with npm
+- **GitHub CLI** (`gh`) pre-installed
+- **Playwright** with Chromium browser
+- **Docker-in-Docker** for container testing
+- **VS Code Extensions**: Python, ESLint, Prettier, Tailwind CSS, Playwright
+
+### Environment Configuration
+
+#### Development (default)
+Uses `config.yaml` with:
+- Host: `127.0.0.1` (localhost only)
+- Port: `8000`
+- Auth: Enabled
+- Rate limiting: Enabled
+
+#### Testing
+Uses `config.test.yaml` with:
+- Host: `0.0.0.0` (all interfaces)
+- Port: `8001`
+- Auth: Disabled
+- Rate limiting: Disabled
+
+Run with test config:
+```bash
+CONFIG_FILE=config.test.yaml python main.py
+```
+
+#### Local Overrides
+Create `config.local.yaml` for personal settings (git-ignored):
+```yaml
+server:
+  host: "0.0.0.0"
+security:
+  auth:
+    enabled: false
+```
+
+## �📚 API Endpoints
 
 ### Repository Information
 
