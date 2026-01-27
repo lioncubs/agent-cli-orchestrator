@@ -12,10 +12,10 @@ repositories:
   
 # Server configuration
 server:
-  # SECURITY: Use 127.0.0.1 for local development only
-  # For production or network access, use 0.0.0.0 with proper authentication
+  # SECURITY: Use 0.0.0.0 for dev container port forwarding
+  # For production, use 127.0.0.1 with reverse proxy or proper firewall
   # See API.md for security recommendations
-  host: "127.0.0.1"
+  host: "0.0.0.0"
   port: 8000
   # TLS/HTTPS configuration (enable for production)
   ssl_enabled: false
