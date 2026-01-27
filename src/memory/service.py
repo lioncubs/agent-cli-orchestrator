@@ -1,6 +1,5 @@
 """Memory service for managing user memories."""
 
-import os
 from datetime import datetime, timezone
 from typing import List, Optional
 from pathlib import Path
