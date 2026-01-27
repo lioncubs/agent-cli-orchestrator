@@ -12,6 +12,13 @@ import type {
   ApiError
 } from '../types/api';
 
+// Extended error type for branch switching
+export interface BranchSwitchError {
+  error: string;
+  type: 'dirty_working_tree' | 'branch_error';
+  branch: string;
+}
+
 class ApiClient {
   private client: AxiosInstance;
 
@@ -27,8 +34,16 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error: AxiosError<ApiError>) => {
-        if (error.response?.data?.detail) {
-          throw new Error(error.response.data.detail);
+        // Preserve structured error data for branch switching
+        const detail = error.response?.data?.detail;
+        if (detail && typeof detail === 'object') {
+          const detailObj = detail as { error?: string; type?: string; branch?: string };
+          const customError = new Error(detailObj.error || 'Unknown error');
+          (customError as any).details = detailObj;
+          throw customError;
+        }
+        if (detail && typeof detail === 'string') {
+          throw new Error(detail);
         }
         throw error;
       }
@@ -43,6 +58,32 @@ class ApiClient {
 
   async getRepository(repoName?: string): Promise<{ repository: string; configured_name: string; path: string }> {
     const { data } = await this.client.get('/repo', {
+      params: { repo_name: repoName },
+    });
+    return data;
+  }
+
+  // Git status endpoint
+  async getGitStatus(repoName?: string): Promise<{
+    status: string;
+    branch: string;
+    is_clean: boolean;
+    can_switch_branch: boolean;
+    details: {
+      modified: string[];
+      staged: string[];
+      untracked: string[];
+      conflicts: string[];
+    };
+    counts: {
+      modified: number;
+      staged: number;
+      untracked: number;
+      conflicts: number;
+    };
+    suggestions?: string[];
+  }> {
+    const { data } = await this.client.get('/git/status', {
       params: { repo_name: repoName },
     });
     return data;
@@ -63,10 +104,17 @@ class ApiClient {
     return data;
   }
 
-  async selectBranch(branch: string, repoName?: string): Promise<any> {
+  async selectBranch(branch: string, repoName?: string, force: boolean = false): Promise<{
+    status: string;
+    branch: string;
+    message: string;
+    was_switch_needed?: boolean;
+    previous_branch?: string;
+  }> {
     const { data } = await this.client.post('/branch/select', {
       branch,
       repo_name: repoName,
+      force,
     });
     return data;
   }

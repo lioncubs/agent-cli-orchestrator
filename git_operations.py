@@ -29,17 +29,157 @@ class GitOperations:
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to get current branch: {e.stderr}")
     
-    def switch_branch(self, branch_name: str) -> Dict[str, str]:
-        """Switch to a different branch."""
+    def get_status(self) -> Dict[str, any]:
+        """Get detailed git status including modified, staged, and untracked files."""
         try:
-            self._run_command(['git', 'checkout', branch_name])
+            # Get porcelain status for parsing
+            output = self._run_command(['git', 'status', '--porcelain'])
+            
+            modified = []
+            staged = []
+            untracked = []
+            conflicts = []
+            
+            for line in output.split('\n'):
+                if not line:
+                    continue
+                # Status format: XY filename
+                # X = index status, Y = working tree status
+                index_status = line[0] if len(line) > 0 else ' '
+                work_status = line[1] if len(line) > 1 else ' '
+                filename = line[3:] if len(line) > 3 else ''
+                
+                # Untracked files
+                if index_status == '?' and work_status == '?':
+                    untracked.append(filename)
+                # Merge conflicts
+                elif index_status == 'U' or work_status == 'U' or (index_status == 'A' and work_status == 'A') or (index_status == 'D' and work_status == 'D'):
+                    conflicts.append(filename)
+                else:
+                    # Staged changes (index has changes)
+                    if index_status in 'MADRC':
+                        staged.append(filename)
+                    # Modified in working tree
+                    if work_status in 'MD':
+                        modified.append(filename)
+            
+            return {
+                'is_clean': len(modified) == 0 and len(staged) == 0 and len(conflicts) == 0,
+                'modified': modified,
+                'staged': staged,
+                'untracked': untracked,
+                'conflicts': conflicts,
+                'has_conflicts': len(conflicts) > 0,
+                'has_staged': len(staged) > 0,
+                'has_modified': len(modified) > 0
+            }
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to get git status: {e.stderr}")
+    
+    def is_working_tree_clean(self) -> bool:
+        """Check if working tree is clean (no uncommitted changes)."""
+        status = self.get_status()
+        return status['is_clean']
+    
+    def switch_branch(self, branch_name: str, force: bool = False) -> Dict[str, any]:
+        """
+        Switch to a different branch.
+        
+        Args:
+            branch_name: The name of the branch to switch to
+            force: If True, discard local changes and force switch
+            
+        Returns:
+            Dict with status, branch name, and message
+            
+        Raises:
+            RuntimeError: If branch switch fails or working tree is dirty
+        """
+        try:
+            # Check current branch first
+            current_branch = self.get_current_branch()
+            if current_branch == branch_name:
+                return {
+                    "status": "success",
+                    "branch": branch_name,
+                    "message": f"Already on branch '{branch_name}'",
+                    "was_switch_needed": False
+                }
+            
+            # Check if working tree is clean (unless force is True)
+            if not force:
+                status = self.get_status()
+                
+                if status['has_conflicts']:
+                    raise RuntimeError(
+                        f"Cannot switch branches: You have merge conflicts in {len(status['conflicts'])} file(s).\n"
+                        f"Conflicted files: {', '.join(status['conflicts'][:5])}{'...' if len(status['conflicts']) > 5 else ''}\n\n"
+                        f"To fix this:\n"
+                        f"  1. Resolve the conflicts in the listed files\n"
+                        f"  2. Stage the resolved files: git add <file>\n"
+                        f"  3. Complete the merge: git commit\n\n"
+                        f"Or abort the merge: git merge --abort"
+                    )
+                
+                if status['has_staged']:
+                    raise RuntimeError(
+                        f"Cannot switch branches: You have {len(status['staged'])} staged change(s).\n"
+                        f"Staged files: {', '.join(status['staged'][:5])}{'...' if len(status['staged']) > 5 else ''}\n\n"
+                        f"To fix this, choose one option:\n"
+                        f"  • Commit your changes: git commit -m 'Your message'\n"
+                        f"  • Stash your changes: git stash\n"
+                        f"  • Unstage changes: git reset HEAD\n"
+                        f"  • Discard changes: git checkout -- . (WARNING: loses changes)"
+                    )
+                
+                if status['has_modified']:
+                    raise RuntimeError(
+                        f"Cannot switch branches: You have {len(status['modified'])} modified file(s).\n"
+                        f"Modified files: {', '.join(status['modified'][:5])}{'...' if len(status['modified']) > 5 else ''}\n\n"
+                        f"To fix this, choose one option:\n"
+                        f"  • Commit your changes:\n"
+                        f"      git add .\n"
+                        f"      git commit -m 'Your message'\n"
+                        f"  • Stash your changes: git stash\n"
+                        f"  • Discard changes: git checkout -- . (WARNING: loses changes)"
+                    )
+            
+            # Perform the switch
+            cmd = ['git', 'checkout']
+            if force:
+                cmd.append('-f')
+            cmd.append(branch_name)
+            
+            self._run_command(cmd)
             return {
                 "status": "success",
                 "branch": branch_name,
-                "message": f"Switched to branch '{branch_name}'"
+                "message": f"Switched to branch '{branch_name}'",
+                "was_switch_needed": True,
+                "previous_branch": current_branch
             }
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to switch branch: {e.stderr}")
+            error_msg = e.stderr.strip() if e.stderr else str(e)
+            
+            # Check for common errors and provide helpful messages
+            if "did not match any" in error_msg or "pathspec" in error_msg:
+                raise RuntimeError(
+                    f"Branch '{branch_name}' does not exist.\n\n"
+                    f"To fix this:\n"
+                    f"  • List available branches: git branch -a\n"
+                    f"  • Create the branch: git checkout -b {branch_name}\n"
+                    f"  • Fetch remote branches: git fetch --all"
+                )
+            elif "would be overwritten" in error_msg:
+                raise RuntimeError(
+                    f"Cannot switch branches: Local changes would be overwritten.\n\n"
+                    f"To fix this:\n"
+                    f"  • Commit your changes: git add . && git commit -m 'message'\n"
+                    f"  • Stash your changes: git stash\n"
+                    f"  • Discard changes: git checkout -- ."
+                )
+            else:
+                raise RuntimeError(f"Failed to switch branch: {error_msg}")
     
     def list_worktrees(self) -> List[Dict[str, str]]:
         """List all Git worktrees."""

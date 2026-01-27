@@ -80,6 +80,7 @@ class PromptRequest(BaseModel):
 class BranchSelectRequest(BaseModel):
     branch: str
     repo_name: Optional[str] = None
+    force: Optional[bool] = False  # Force switch even if working tree is dirty
 
 
 class WorktreeCreateRequest(BaseModel):
@@ -647,30 +648,91 @@ async def list_branches(repo_name: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/git/status")
+async def get_git_status(repo_name: Optional[str] = None):
+    """Get git working tree status.
+    
+    Returns information about modified, staged, untracked files and merge conflicts.
+    Useful for checking if branch switching is safe.
+    """
+    try:
+        repo_path = resolve_repo_path(repo_name)
+        temp_git_ops = GitOperations(repo_path=repo_path)
+        status = temp_git_ops.get_status()
+        current_branch = temp_git_ops.get_current_branch()
+        
+        result = {
+            "status": "success",
+            "branch": current_branch,
+            "is_clean": status['is_clean'],
+            "can_switch_branch": status['is_clean'],
+            "details": {
+                "modified": status['modified'],
+                "staged": status['staged'],
+                "untracked": status['untracked'],
+                "conflicts": status['conflicts']
+            },
+            "counts": {
+                "modified": len(status['modified']),
+                "staged": len(status['staged']),
+                "untracked": len(status['untracked']),
+                "conflicts": len(status['conflicts'])
+            }
+        }
+        
+        # Add suggestions if not clean
+        if not status['is_clean']:
+            suggestions = []
+            if status['has_conflicts']:
+                suggestions.append("Resolve merge conflicts before switching branches")
+            if status['has_staged']:
+                suggestions.append("Commit staged changes: git commit -m 'message'")
+            if status['has_modified']:
+                suggestions.append("Commit or stash modified files: git stash")
+            result["suggestions"] = suggestions
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/branch/select")
 async def select_branch(request: BranchSelectRequest):
-    """Switch to a branch."""
+    """Switch to a branch.
+    
+    Will check if working tree is clean before switching.
+    If there are uncommitted changes, returns an error with suggestions.
+    Use force=true to switch anyway (discards local changes).
+    """
     try:
         repo_path = resolve_repo_path(request.repo_name)
         temp_git_ops = GitOperations(repo_path=repo_path)
-        result = temp_git_ops.switch_branch(request.branch)
+        result = temp_git_ops.switch_branch(request.branch, force=request.force)
         
         activity_log.add(
             action="select_branch",
             status="success",
-            payload={"branch": request.branch, "repo_name": request.repo_name},
+            payload={"branch": request.branch, "repo_name": request.repo_name, "force": request.force},
             result=result
         )
         return result
     except RuntimeError as e:
-        # Git operation errors (branch not found, etc.)
+        # Git operation errors (dirty working tree, branch not found, etc.)
+        error_message = str(e)
         activity_log.add(
             action="select_branch",
             status="error",
-            payload={"branch": request.branch, "repo_name": request.repo_name},
-            result={"message": str(e)}
+            payload={"branch": request.branch, "repo_name": request.repo_name, "force": request.force},
+            result={"message": error_message}
         )
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=400, 
+            detail={
+                "error": error_message,
+                "type": "dirty_working_tree" if "Cannot switch branches" in error_message else "branch_error",
+                "branch": request.branch
+            }
+        )
     except HTTPException:
         raise
     except Exception as e:
