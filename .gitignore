@@ -61,4 +61,20 @@ data/
 frontend/node_modules/
 frontend/dist/
 frontend/.env.local
-frontend/coverage/
+frontend/coverage/frontend/playwright-report/
+frontend/test-results/
+
+# Root node_modules (for Playwright/Puppeteer)
+node_modules/
+package-lock.json
+
+# Test artifacts
+screenshots/
+test-logs/
+server.pid
+test.fail.txt
+
+# Temp scripts
+screenshot-pages.js
+take-all-screenshots.js
+hello_world.py
