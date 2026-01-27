@@ -67,7 +67,7 @@ export function Security() {
               <div className="card">
                 <h3 className="text-sm font-medium text-gray-600 mb-2">By Event Type</h3>
                 <div className="space-y-1">
-                  {Object.entries(data.summary.by_event_type).slice(0, 3).map(([type, count]) => (
+                  {Object.entries(data.summary.by_type || {}).slice(0, 3).map(([type, count]) => (
                     <div key={type} className="flex justify-between text-sm">
                       <span className="text-gray-700">{type}</span>
                       <span className="font-semibold">{count as number}</span>
@@ -96,14 +96,14 @@ export function Security() {
           )}
 
           {/* Recent Critical Events */}
-          {data?.summary?.recent_critical_or_errors && data.summary.recent_critical_or_errors.length > 0 && (
+          {data?.summary?.recent_critical && data.summary.recent_critical.length > 0 && (
             <div className="card">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
                 <AlertCircle className="mr-2 h-5 w-5 text-red-600" />
                 Recent Critical Events
               </h2>
               <div className="space-y-2">
-                {data.summary.recent_critical_or_errors.map((event, idx) => (
+                {data.summary.recent_critical.map((event, idx) => (
                   <div
                     key={idx}
                     className="p-3 bg-red-50 border border-red-200 rounded-lg"

@@ -69,9 +69,9 @@ export interface SecuritySummary {
   status: string;
   summary: {
     total_events: number;
-    by_event_type: Record<string, number>;
+    by_type: Record<string, number>;
     by_severity: Record<string, number>;
-    recent_critical_or_errors: ActivityLog[];
+    recent_critical: ActivityLog[];
   };
   security_features: {
     password_hashing: string;
