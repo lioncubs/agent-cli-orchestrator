@@ -1473,3 +1473,273 @@ copilot_pat:
 
 For implementation details, see [PHASE11_SUMMARY.md](PHASE11_SUMMARY.md).
 
+---
+
+## Memory Management
+
+The Memory API allows users to store, retrieve, update, and delete personal memories. Each memory is associated with a specific user and can include tags and metadata for organization.
+
+### POST `/memories/`
+
+Create a new memory for a user.
+
+**Request Body:**
+```json
+{
+  "user_id": "user123",
+  "content": "I learned about Python decorators today",
+  "tags": ["learning", "python"],
+  "metadata": {
+    "topic": "programming",
+    "source": "tutorial"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "memory": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "user123",
+    "content": "I learned about Python decorators today",
+    "created_at": "2026-01-27T10:22:03.748358+00:00",
+    "updated_at": "2026-01-27T10:22:03.748361+00:00",
+    "tags": ["learning", "python"],
+    "metadata": {
+      "topic": "programming",
+      "source": "tutorial"
+    }
+  },
+  "message": "Memory created successfully"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Memory created successfully
+- `500 Internal Server Error`: Failed to create memory
+
+---
+
+### GET `/memories/`
+
+Get all memories for a user.
+
+**Query Parameters:**
+- `user_id` (required): User ID to retrieve memories for
+- `limit` (optional): Maximum number of memories to return
+
+**Example:**
+```
+GET /memories/?user_id=user123&limit=10
+```
+
+**Response:**
+```json
+{
+  "memories": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "user_id": "user123",
+      "content": "I learned about Python decorators today",
+      "created_at": "2026-01-27T10:22:03.748358+00:00",
+      "updated_at": "2026-01-27T10:22:03.748361+00:00",
+      "tags": ["learning", "python"],
+      "metadata": {"topic": "programming"}
+    }
+  ],
+  "total": 1,
+  "user_id": "user123"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `500 Internal Server Error`: Failed to retrieve memories
+
+---
+
+### GET `/memories/last`
+
+Get the most recently created memory for a user.
+
+**Query Parameters:**
+- `user_id` (required): User ID to retrieve last memory for
+
+**Example:**
+```
+GET /memories/last?user_id=user123
+```
+
+**Response:**
+```json
+{
+  "memory": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "user123",
+    "content": "I learned about Python decorators today",
+    "created_at": "2026-01-27T10:22:03.748358+00:00",
+    "updated_at": "2026-01-27T10:22:03.748361+00:00",
+    "tags": ["learning", "python"],
+    "metadata": {"topic": "programming"}
+  },
+  "message": "Last memory retrieved successfully"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `404 Not Found`: No memories found for user
+- `500 Internal Server Error`: Failed to retrieve memory
+
+---
+
+### GET `/memories/{memory_id}`
+
+Get a specific memory by ID.
+
+**Path Parameters:**
+- `memory_id`: The unique identifier of the memory
+
+**Query Parameters:**
+- `user_id` (required): User ID who owns the memory
+
+**Example:**
+```
+GET /memories/550e8400-e29b-41d4-a716-446655440000?user_id=user123
+```
+
+**Response:**
+```json
+{
+  "memory": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "user123",
+    "content": "I learned about Python decorators today",
+    "created_at": "2026-01-27T10:22:03.748358+00:00",
+    "updated_at": "2026-01-27T10:22:03.748361+00:00",
+    "tags": ["learning", "python"],
+    "metadata": {"topic": "programming"}
+  },
+  "message": "Memory retrieved successfully"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `404 Not Found`: Memory not found
+- `500 Internal Server Error`: Failed to retrieve memory
+
+---
+
+### PUT `/memories/{memory_id}`
+
+Update an existing memory.
+
+**Path Parameters:**
+- `memory_id`: The unique identifier of the memory
+
+**Query Parameters:**
+- `user_id` (required): User ID who owns the memory
+
+**Request Body:**
+```json
+{
+  "content": "Updated content",
+  "tags": ["updated", "python"],
+  "metadata": {
+    "edited": true
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "memory": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_id": "user123",
+    "content": "Updated content",
+    "created_at": "2026-01-27T10:22:03.748358+00:00",
+    "updated_at": "2026-01-27T10:25:15.123456+00:00",
+    "tags": ["updated", "python"],
+    "metadata": {"edited": true}
+  },
+  "message": "Memory updated successfully"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `404 Not Found`: Memory not found
+- `500 Internal Server Error`: Failed to update memory
+
+---
+
+### DELETE `/memories/{memory_id}`
+
+Delete a memory.
+
+**Path Parameters:**
+- `memory_id`: The unique identifier of the memory
+
+**Query Parameters:**
+- `user_id` (required): User ID who owns the memory
+
+**Example:**
+```
+DELETE /memories/550e8400-e29b-41d4-a716-446655440000?user_id=user123
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Memory deleted successfully"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `404 Not Found`: Memory not found
+- `500 Internal Server Error`: Failed to delete memory
+
+---
+
+### GET `/memories/search/`
+
+Search memories by content.
+
+**Query Parameters:**
+- `user_id` (required): User ID to search memories for
+- `query` (required): Search query string
+
+**Example:**
+```
+GET /memories/search/?user_id=user123&query=python
+```
+
+**Response:**
+```json
+{
+  "memories": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "user_id": "user123",
+      "content": "I learned about Python decorators today",
+      "created_at": "2026-01-27T10:22:03.748358+00:00",
+      "updated_at": "2026-01-27T10:22:03.748361+00:00",
+      "tags": ["learning", "python"],
+      "metadata": {"topic": "programming"}
+    }
+  ],
+  "total": 1,
+  "user_id": "user123"
+}
+```
+
+**Status Codes:**
+- `200 OK`: Success
+- `500 Internal Server Error`: Failed to search memories
+
+
